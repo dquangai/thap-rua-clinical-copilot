@@ -7,9 +7,22 @@ from supabase import Client
 from app.audit import write_audit
 from app.auth import CurrentUser, get_current_user
 from app.database import get_admin_client
-from app.schemas import ClinicalNote, ClinicalNoteCreate, Encounter, EncounterCreate, EncounterStatusUpdate, Workspace
+from app.schemas import ClinicalNote, ClinicalNoteCreate, ClinicalRecordImport, ClinicalRecordImportResult, Encounter, EncounterCreate, EncounterStatusUpdate, Workspace
 
 router = APIRouter(prefix="/encounters", tags=["encounters"])
+
+
+@router.post("/import-clinical-record", response_model=ClinicalRecordImportResult, status_code=status.HTTP_201_CREATED)
+def import_clinical_record(
+    payload: ClinicalRecordImport,
+    actor: CurrentUser = Depends(get_current_user),
+    db: Client = Depends(get_admin_client),
+):
+    encounter_id = db.rpc(
+        "import_clinical_record",
+        {"payload": payload.model_dump(mode="json"), "actor_id": actor.id},
+    ).execute().data
+    return {"encounter_id": encounter_id}
 
 
 @router.get("", response_model=list[Encounter])
@@ -68,4 +81,14 @@ def get_workspace(encounter_id: UUID, _: CurrentUser = Depends(get_current_user)
     encounter = rows[0]
     patient = encounter.pop("patient")
     notes = db.table("clinical_notes").select("*").eq("encounter_id", str(encounter_id)).order("authored_at").execute().data
-    return {"patient": patient, "encounter": encounter, "notes": notes}
+    vital_rows = db.table("vital_signs").select("*").eq("encounter_id", str(encounter_id)).limit(1).execute().data
+    diagnoses = db.table("diagnoses").select("*").eq("encounter_id", str(encounter_id)).execute().data
+    conclusion_rows = db.table("clinical_conclusions").select("*").eq("encounter_id", str(encounter_id)).limit(1).execute().data
+    return {
+        "patient": patient,
+        "encounter": encounter,
+        "notes": notes,
+        "vital_signs": vital_rows[0] if vital_rows else None,
+        "diagnoses": diagnoses,
+        "conclusion": conclusion_rows[0] if conclusion_rows else None,
+    }

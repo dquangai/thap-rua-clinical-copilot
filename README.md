@@ -20,7 +20,7 @@ npm install
 npm run dev:frontend
 ~~~
 
-Backend dùng Python/FastAPI, Supabase PostgreSQL và Supabase Auth. Xem hướng dẫn cấu hình tại `backend/api/README.md`, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
+Backend dùng Python/FastAPI với Supabase Cloud PostgreSQL và Supabase Auth. Xem `docs/supabase-online-setup.md` để thiết lập hoàn toàn trên web, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
 
 ## Hiện có
 
