@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 76" role="img" aria-labelledby="title">
+  <title id="title">Biểu tượng Tháp Rùa</title>
+  <g fill="#C72127">
+    <path d="M32 1 36 9l10 8-4 5H22l-4-5 10-8 4-8Z"/>
+    <path d="M23 20h18v12H23z"/>
+    <path d="M15 29h34l5 6H10l5-6Z"/>
+    <path d="M19 34h26v13H19z"/>
+    <path d="M9 44h46l5 7H4l5-7Z"/>
+    <path d="M14 50h36v11H14z"/>
+    <path d="M7 58h50l5 17H2l5-17Z"/>
+  </g>
+  <path fill="#fff" d="M29 20a3 3 0 0 1 6 0v5h-6v-5Zm-1 20a4 4 0 0 1 8 0v5h-8v-5Zm1 16h6v6h6v6h-6v6h-6v-6h-6v-6h6v-6Z"/>
+</svg>
