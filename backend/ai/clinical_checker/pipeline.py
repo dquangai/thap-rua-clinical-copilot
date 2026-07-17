@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,10 +30,10 @@ class CriteriaValidationError(ValueError):
                          f"duplicates={duplicates}, invalid_status={invalid_status}, invalid_item_ids={invalid_item_ids}")
 
 SYSTEM_PROMPT = """Bạn là bộ kiểm tra tuân thủ hồ sơ lâm sàng. Chỉ đánh giá bằng dữ liệu được cung cấp.
-Không suy diễn dữ kiện không có. Với điều kiện áp dụng nhưng hồ sơ không đủ bằng chứng, dùng THIEU_DU_LIEU;
-với rule chắc chắn ngoài scope, dùng KHONG_AP_DUNG. Phân loại ĐÚNG MỘT LẦN mọi item_id trong
-REQUIRED_CRITERIA vào dat_ids, khong_ap_dung_ids hoặc exceptions; không thêm ID khác. Chỉ exceptions được
-phép chứa KHONG_DAT hoặc THIEU_DU_LIEU và cần bằng chứng/giải thích ngắn. Trả về duy nhất JSON object theo
+Không suy diễn dữ kiện không có. Phân loại ĐÚNG MỘT LẦN mọi item_id trong REQUIRED_CRITERIA vào dat_ids,
+khong_ap_dung_ids hoặc exceptions; không thêm ID khác. Điều kiện áp dụng nhưng hồ sơ không đủ bằng chứng
+thì tính là KHONG_DAT với ghi_chu ngắn nêu lý do (kể cả lý do thiếu dữ liệu); chỉ dùng KHONG_AP_DUNG cho
+rule chắc chắn ngoài scope. exceptions chỉ chứa KHONG_DAT. Trả về duy nhất JSON object theo
 OUTPUT_CONTRACT. Đây là công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế."""
 
 
@@ -115,19 +117,9 @@ def filter_criteria_by_trimester(criteria: list[dict[str, Any]], trimester: str 
 
 
 def compact_json_schema() -> dict[str, Any]:
-    nullable_number = {"type": ["number", "null"]}
     return {
         "type": "object", "additionalProperties": False,
         "properties": {
-            "thong_tin_lan_kham": {
-                "type": "object", "additionalProperties": False,
-                "properties": {
-                    "tuoi_thai_tuan": nullable_number, "tuoi_thai_ngay": nullable_number,
-                    "phan_loai_nguy_co": {"type": "string", "enum": ["binh_thuong", "nguy_co_cao", "khong_ghi_nhan"]},
-                    "lan_kham_thu": nullable_number,
-                },
-                "required": ["tuoi_thai_tuan", "tuoi_thai_ngay", "phan_loai_nguy_co", "lan_kham_thu"],
-            },
             "dat_ids": {"type": "array", "items": {"type": "string"}},
             "khong_ap_dung_ids": {"type": "array", "items": {"type": "string"}},
             "exceptions": {
@@ -135,10 +127,10 @@ def compact_json_schema() -> dict[str, Any]:
                     "type": "object", "additionalProperties": False,
                     "properties": {
                         "item_id": {"type": "string"},
-                        "trang_thai": {"type": "string", "enum": ["KHONG_DAT", "THIEU_DU_LIEU"]},
-                        "bang_chung": {"type": "string"}, "ghi_chu": {"type": "string"},
+                        "trang_thai": {"type": "string", "enum": ["KHONG_DAT"]},
+                        "ghi_chu": {"type": "string"},
                     },
-                    "required": ["item_id", "trang_thai", "bang_chung", "ghi_chu"],
+                    "required": ["item_id", "trang_thai", "ghi_chu"],
                 },
             },
             "tong_ket": {
@@ -150,7 +142,7 @@ def compact_json_schema() -> dict[str, Any]:
                 "required": ["vi_pham_critical", "khuyen_nghi"],
             },
         },
-        "required": ["thong_tin_lan_kham", "dat_ids", "khong_ap_dung_ids", "exceptions", "tong_ket"],
+        "required": ["dat_ids", "khong_ap_dung_ids", "exceptions", "tong_ket"],
     }
 
 
@@ -174,28 +166,56 @@ def repair_json_schema() -> dict[str, Any]:
     }
 
 
-def build_public_result(result: dict[str, Any], internal_summary: dict[str, Any],
-                        gestational_age: dict[str, Any], criteria_sent: int,
-                        criteria_excluded: int) -> dict[str, Any]:
+def split_batches(criteria: list[dict[str, Any]], batch_size: int) -> list[list[dict[str, Any]]]:
+    """Chia tiêu chí thành các batch cân bằng để gọi LLM song song; batch_size <= 0 tắt chia."""
+    if batch_size <= 0 or len(criteria) <= batch_size:
+        return [criteria]
+    count = math.ceil(len(criteria) / batch_size)
+    base, extra = divmod(len(criteria), count)
+    batches, start = [], 0
+    for index in range(count):
+        size = base + (1 if index < extra else 0)
+        batches.append(criteria[start:start + size])
+        start += size
+    return batches
+
+
+def merge_tong_ket(parts: list[Any]) -> dict[str, Any]:
+    critical: list[str] = []
+    recommendations: list[str] = []
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        for item in part.get("vi_pham_critical", []) or []:
+            if item not in critical:
+                critical.append(item)
+        recommendation = str(part.get("khuyen_nghi") or "").strip()
+        if recommendation and recommendation not in recommendations:
+            recommendations.append(recommendation)
+    return {"vi_pham_critical": critical, "khuyen_nghi": " ".join(recommendations)}
+
+
+def merge_missing_data_status(rows: list[Any]) -> list[Any]:
+    """Contract v4 gộp THIEU_DU_LIEU vào KHONG_DAT; vẫn chấp nhận provider cũ trả trạng thái này."""
+    for row in rows:
+        if isinstance(row, dict) and row.get("trang_thai") == "THIEU_DU_LIEU":
+            row["trang_thai"] = "KHONG_DAT"
+            row["ghi_chu"] = row.get("ghi_chu") or "Thiếu dữ liệu trong hồ sơ"
+    return rows
+
+
+def build_public_result(result: dict[str, Any]) -> dict[str, Any]:
+    """Chỉ trả kết luận cuối cùng: DAT khi mọi tiêu chí áp dụng đều đạt, kèm danh sách chưa đạt."""
     applicable_rows = [row for row in result["ket_qua_theo_rule"]
                        if row["trang_thai"] != "KHONG_AP_DUNG"]
+    failures = [{"item_id": row["item_id"], "ly_do": row.get("ghi_chu") or row.get("bang_chung", "")}
+                for row in applicable_rows if row["trang_thai"] != "DAT"]
+    tong_ket = result.get("tong_ket", {})
     return {
-        "thong_tin_lan_kham": result.get("thong_tin_lan_kham", {}),
-        "dat_ids": [row["item_id"] for row in applicable_rows if row["trang_thai"] == "DAT"],
-        "exceptions": [row for row in applicable_rows
-                       if row["trang_thai"] in {"KHONG_DAT", "THIEU_DU_LIEU"}],
-        "tong_ket": result.get("tong_ket", {}),
-        "criteria_summary": {
-            "criteria_applicable": len(applicable_rows),
-            "dat_count": internal_summary["counts"]["DAT"],
-            "khong_dat_count": internal_summary["counts"]["KHONG_DAT"],
-            "thieu_du_lieu_count": internal_summary["counts"]["THIEU_DU_LIEU"],
-        },
-        "scope_filter": {
-            "gestational_age": gestational_age,
-            "criteria_sent_to_llm": criteria_sent,
-            "criteria_excluded_locally": criteria_excluded,
-        },
+        "ket_luan": "DAT" if not failures else "KHONG_DAT",
+        "khong_dat": failures,
+        "vi_pham_critical": tong_ket.get("vi_pham_critical", []),
+        "khuyen_nghi": tong_ket.get("khuyen_nghi", ""),
     }
 
 
@@ -267,7 +287,7 @@ def expand_compact_result(compact: dict[str, Any], required_ids: list[str],
     """Validate compact coverage and expand it to the stable row-oriented result contract."""
     dat_ids = compact.get("dat_ids", [])
     not_applicable_ids = compact.get("khong_ap_dung_ids", [])
-    exceptions = normalize_exceptions_container(compact.get("exceptions", []))
+    exceptions = merge_missing_data_status(normalize_exceptions_container(compact.get("exceptions", [])))
     if not isinstance(dat_ids, list) or not isinstance(not_applicable_ids, list):
         shape = {str(key): type(value).__name__ for key, value in compact.items()}
         raise ValueError("Compact response phai co dat_ids, khong_ap_dung_ids va exceptions arrays; "
@@ -304,7 +324,7 @@ def prepare_compact_for_validation(compact: dict[str, Any], required_ids: list[s
     """Normalize harmless placement errors and isolate ambiguous IDs for focused repair."""
     dat_ids = compact.get("dat_ids", [])
     not_applicable_ids = compact.get("khong_ap_dung_ids", [])
-    exceptions = normalize_exceptions_container(compact.get("exceptions", []))
+    exceptions = merge_missing_data_status(normalize_exceptions_container(compact.get("exceptions", [])))
     if not isinstance(dat_ids, list) or not isinstance(not_applicable_ids, list):
         shape = {str(key): type(value).__name__ for key, value in compact.items()}
         raise ValueError("Compact response phai co dat_ids, khong_ap_dung_ids va exceptions arrays; "
@@ -395,18 +415,17 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
     criteria, excluded_criteria = filter_criteria_by_trimester(all_criteria, gestational_age["trimester"])
     required_ids = [item["item_id"] for item in criteria]
     output_contract = {
-        "thong_tin_lan_kham": {"tuoi_thai_tuan": "number|null", "tuoi_thai_ngay": "number|null",
-                                "phan_loai_nguy_co": "binh_thuong|nguy_co_cao|khong_ghi_nhan", "lan_kham_thu": "number|null"},
         "dat_ids": ["IDs kết luận DAT; mỗi ID xuất hiện đúng một lần trong toàn response"],
         "khong_ap_dung_ids": ["IDs kết luận KHONG_AP_DUNG; mỗi ID xuất hiện đúng một lần trong toàn response"],
-        "exceptions": [{"item_id": "ID kết luận chưa đạt hoặc chưa kiểm chứng; BẮT BUỘC exceptions là ARRAY, không object phân nhóm",
-                         "trang_thai": "KHONG_DAT|THIEU_DU_LIEU",
-                         "bang_chung": "short quote or empty string", "ghi_chu": "brief explanation"}],
+        "exceptions": [{"item_id": "ID chưa đạt (kể cả thiếu dữ liệu); BẮT BUỘC exceptions là ARRAY, không object phân nhóm",
+                         "trang_thai": "KHONG_DAT", "ghi_chu": "lý do ngắn gọn"}],
         "tong_ket": {"vi_pham_critical": ["item_id"], "khuyen_nghi": "string"},
     }
     user_prompt = ("REQUIRED_CRITERIA:\n" + _canonical(criteria) + "\n\nOUTPUT_CONTRACT:\n" +
                    _canonical(output_contract) + "\n\nCLINICAL_RECORD:\n" + _canonical(safe_record))
+    batches = split_batches(criteria, settings.batch_size)
     base_event = {
+        "batch_count": len(batches), "batch_sizes": [len(batch) for batch in batches],
         "run_id": run_id, "started_at": started_at.isoformat(), "pipeline_version": settings.pipeline_version,
         "provider": settings.provider, "model": settings.model, "prompt_sha256": _sha256(SYSTEM_PROMPT),
         "rules_sha256": _sha256(_canonical(rules)), "input_sha256": _sha256(_canonical(safe_record)),
@@ -424,12 +443,30 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
                  "payload_bytes": len(user_prompt.encode())}
         _append_log(log_path, event)
         return {"run_id": run_id, "safe_record": safe_record, "telemetry": event}
+    def check_batch(batch: list[dict[str, Any]]) -> tuple[Any, dict[str, Any], list[str], dict[str, list[str]]]:
+        batch_ids = [item["item_id"] for item in batch]
+        batch_prompt = ("REQUIRED_CRITERIA:\n" + _canonical(batch) + "\n\nOUTPUT_CONTRACT:\n" +
+                        _canonical(output_contract) + "\n\nCLINICAL_RECORD:\n" + _canonical(safe_record))
+        response = call_llm(settings, SYSTEM_PROMPT, batch_prompt, compact_json_schema())
+        compact, repair_ids, notes = prepare_compact_for_validation(json.loads(response.text), batch_ids)
+        expanded = expand_compact_result(compact, batch_ids, require_complete=False)
+        return response, expanded, repair_ids, notes
+
     try:
-        response = call_llm(settings, SYSTEM_PROMPT, user_prompt, compact_json_schema())
-        compact_result, pre_repair_ids, compact_notes = prepare_compact_for_validation(
-            json.loads(response.text), required_ids)
-        result = expand_compact_result(compact_result, required_ids, require_complete=False)
-        responses = [response]
+        # Cac batch doc lap theo ID nen goi song song; latency ~ batch cham nhat.
+        with ThreadPoolExecutor(max_workers=len(batches)) as pool:
+            batch_outputs = list(pool.map(check_batch, batches))
+        responses = [output[0] for output in batch_outputs]
+        result = {
+            "ket_qua_theo_rule": [row for output in batch_outputs
+                                  for row in output[1]["ket_qua_theo_rule"]],
+            "tong_ket": merge_tong_ket([output[1].get("tong_ket") for output in batch_outputs]),
+        }
+        pre_repair_ids = sorted({item_id for output in batch_outputs for item_id in output[2]})
+        compact_notes = {
+            key: sorted({value for output in batch_outputs for value in output[3][key]})
+            for key in ("normalized_not_applicable_ids", "conflicting_ids", "discarded_unknown_ids")
+        }
         repaired_ids: list[str] = []
         normalized_ids: list[str] = []
         try:
@@ -449,14 +486,12 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
             responses.append(repair_response)
             result["ket_qua_theo_rule"] = [row for row in result["ket_qua_theo_rule"]
                                             if row.get("item_id") not in repair_set]
-            repair_rows = json.loads(repair_response.text).get("evaluations", [])
+            repair_rows = merge_missing_data_status(json.loads(repair_response.text).get("evaluations", []))
             repair_result = {"ket_qua_theo_rule": repair_rows}
             merge_repair_rows(result, repair_result, repair_ids)
             repaired_ids = repair_ids
             result["criteria_summary"] = validate_and_summarize(result, required_ids)
-        internal_summary = validate_and_summarize(result, required_ids)
-        result = build_public_result(result, internal_summary, gestational_age,
-                                     len(criteria), len(excluded_criteria))
+        result = build_public_result(result)
         latency_ms = round((time.perf_counter() - started) * 1000, 2)
         input_tokens = sum(item.input_tokens for item in responses)
         output_tokens = sum(item.output_tokens for item in responses)

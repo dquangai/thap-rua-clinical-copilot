@@ -137,17 +137,52 @@ class PipelineTests(unittest.TestCase):
         repair_schema = repair_json_schema()
         self.assertEqual(repair_schema["properties"]["evaluations"]["type"], "array")
 
-    def test_public_result_omits_not_applicable_criteria(self):
+    def test_public_result_is_final_verdict_only(self):
         internal = {"ket_qua_theo_rule": [
             {"item_id": "PASS", "trang_thai": "DAT"},
             {"item_id": "FAIL", "trang_thai": "KHONG_DAT", "bang_chung": "", "ghi_chu": "x"},
             {"item_id": "NA", "trang_thai": "KHONG_AP_DUNG"},
-        ]}
-        summary = validate_and_summarize(internal, ["PASS", "FAIL", "NA"])
-        public = build_public_result(internal, summary, {"trimester": "TCN1"}, 3, 20)
-        self.assertEqual(public["dat_ids"], ["PASS"])
-        self.assertEqual([x["item_id"] for x in public["exceptions"]], ["FAIL"])
+        ], "tong_ket": {"vi_pham_critical": ["FAIL"], "khuyen_nghi": "y"}}
+        public = build_public_result(internal)
+        self.assertEqual(public["ket_luan"], "KHONG_DAT")
+        self.assertEqual([x["item_id"] for x in public["khong_dat"]], ["FAIL"])
         self.assertNotIn("NA", str(public))
+
+    def test_public_result_passes_when_all_applicable_dat(self):
+        internal = {"ket_qua_theo_rule": [
+            {"item_id": "PASS", "trang_thai": "DAT"},
+            {"item_id": "NA", "trang_thai": "KHONG_AP_DUNG"},
+        ], "tong_ket": {"vi_pham_critical": [], "khuyen_nghi": ""}}
+        public = build_public_result(internal)
+        self.assertEqual(public["ket_luan"], "DAT")
+        self.assertEqual(public["khong_dat"], [])
+
+    def test_split_batches_balances_and_covers_all(self):
+        from clinical_checker.pipeline import split_batches
+        criteria = [{"item_id": f"R{i}"} for i in range(30)]
+        batches = split_batches(criteria, 12)
+        self.assertEqual([len(b) for b in batches], [10, 10, 10])
+        self.assertEqual([x["item_id"] for b in batches for x in b],
+                         [x["item_id"] for x in criteria])
+        self.assertEqual(split_batches(criteria, 0), [criteria])
+        self.assertEqual(split_batches(criteria[:5], 10), [criteria[:5]])
+
+    def test_merge_tong_ket_dedupes(self):
+        from clinical_checker.pipeline import merge_tong_ket
+        merged = merge_tong_ket([
+            {"vi_pham_critical": ["A", "B"], "khuyen_nghi": "Bo sung X."},
+            {"vi_pham_critical": ["B", "C"], "khuyen_nghi": "Bo sung X."},
+            {"vi_pham_critical": [], "khuyen_nghi": "Kiem tra Y."},
+            None,
+        ])
+        self.assertEqual(merged["vi_pham_critical"], ["A", "B", "C"])
+        self.assertEqual(merged["khuyen_nghi"], "Bo sung X. Kiem tra Y.")
+
+    def test_missing_data_status_merges_into_khong_dat(self):
+        from clinical_checker.pipeline import merge_missing_data_status
+        rows = merge_missing_data_status([{"item_id": "A", "trang_thai": "THIEU_DU_LIEU", "ghi_chu": ""}])
+        self.assertEqual(rows[0]["trang_thai"], "KHONG_DAT")
+        self.assertTrue(rows[0]["ghi_chu"])
 
 
 if __name__ == "__main__":

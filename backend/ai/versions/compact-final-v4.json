@@ -1,0 +1,11 @@
+{
+  "pipeline_version": "compact-final-v4",
+  "parent_version": "compact-applicable-v3.1",
+  "status": "candidate",
+  "result_contract": {
+    "ket_luan": "DAT khi moi tieu chi ap dung deu DAT, nguoc lai KHONG_DAT",
+    "khong_dat": "Tieu chi ap dung chua dat (thieu du lieu tinh la khong dat); item_id + ly_do",
+    "omitted": "Counts, bang_chung quotes, thong_tin_lan_kham, chi tiet KHONG_AP_DUNG"
+  },
+  "provider_contract_note": "THIEU_DU_LIEU duoc gop vao KHONG_DAT o ca prompt lan normalize; bo bang_chung de giam output tokens va latency."
+}

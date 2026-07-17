@@ -30,6 +30,7 @@ class Settings:
     pipeline_version: str
     pii_fail_closed: bool
     use_json_schema: bool = True
+    batch_size: int = 10
 
     @classmethod
     def from_env(cls, env_path: Path | None = None) -> "Settings":
@@ -50,6 +51,7 @@ class Settings:
             api_key=os.getenv("LLM_API_KEY", ""),
             base_url=base_url,
             use_json_schema=use_json_schema,
+            batch_size=int(os.getenv("LLM_BATCH_SIZE", "10")),
             timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "90")),
             max_output_tokens=int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "4000")),
             input_price_per_million_usd=float(os.getenv("LLM_INPUT_PRICE_PER_MILLION_USD", "0")),

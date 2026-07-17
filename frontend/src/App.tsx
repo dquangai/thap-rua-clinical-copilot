@@ -45,7 +45,7 @@ import {
 import { mockPatients, statusSummary } from './data/mockPatients'
 import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
 import { useClinicalStore } from './store/useClinicalStore'
-import type { AiCheckResponse, AiExceptionStatus } from './types/aiCheck'
+import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
@@ -289,16 +289,13 @@ type AiCheckState = {
   data: AiCheckResponse | null
 }
 
-const aiExceptionStatusLabels: Record<AiExceptionStatus, string> = {
-  KHONG_DAT: 'Không đạt',
-  THIEU_DU_LIEU: 'Thiếu dữ liệu',
-}
-
 function AiCheckModal({ state, onClose }: { state: AiCheckState; onClose: () => void }) {
   const { loading, error, data } = state
   const result = data?.result
   const catalog = data?.criteria_catalog ?? {}
-  const gestationalAge = result?.scope_filter.gestational_age
+  const failures = result?.khong_dat ?? []
+  const passed = result?.ket_luan === 'DAT'
+  const criticalSet = new Set(result?.vi_pham_critical ?? [])
 
   return (
     <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Kết quả kiểm tra hồ sơ bằng AI">
@@ -319,63 +316,31 @@ function AiCheckModal({ state, onClose }: { state: AiCheckState; onClose: () => 
           )}
           {!loading && result && (
             <>
-              <div className={styles.aiChips}>
-                <span className={`${styles.aiChip} ${styles.aiChipPass}`}>Đạt: {result.criteria_summary.dat_count}</span>
-                <span className={`${styles.aiChip} ${styles.aiChipFail}`}>Không đạt: {result.criteria_summary.khong_dat_count}</span>
-                <span className={`${styles.aiChip} ${styles.aiChipMissing}`}>Thiếu dữ liệu: {result.criteria_summary.thieu_du_lieu_count}</span>
-                <span className={styles.aiChip}>Áp dụng: {result.criteria_summary.criteria_applicable} tiêu chí</span>
+              <div className={`${styles.aiVerdict} ${passed ? styles.aiVerdictPass : styles.aiVerdictFail}`}>
+                {passed ? <CircleCheck size={24} /> : <TriangleAlert size={24} />}
+                <strong>{passed ? 'ĐẠT' : 'KHÔNG ĐẠT'}</strong>
               </div>
-              {gestationalAge?.detected && (
-                <p className={styles.aiMetaLine}>
-                  Tuổi thai: <strong>{gestationalAge.weeks} tuần {gestationalAge.days} ngày ({gestationalAge.trimester})</strong>
-                  {' '}· Gửi {result.scope_filter.criteria_sent_to_llm} tiêu chí, loại {result.scope_filter.criteria_excluded_locally} tiêu chí ngoài tam cá nguyệt
-                </p>
-              )}
-              {result.tong_ket.vi_pham_critical.length > 0 && (
-                <div className={styles.aiCritical}>
-                  <TriangleAlert size={15} />
-                  <p>Vi phạm nghiêm trọng: <strong>{result.tong_ket.vi_pham_critical.join(', ')}</strong></p>
-                </div>
-              )}
-              {result.exceptions.length > 0 ? (
+              {failures.length > 0 && (
                 <ul className={styles.aiExceptionList}>
-                  {result.exceptions.map((exception) => (
-                    <li key={exception.item_id}>
+                  {failures.map((failure) => (
+                    <li key={failure.item_id}>
                       <div className={styles.aiExceptionHead}>
-                        <strong>{exception.item_id}</strong>
-                        <span className={`${styles.aiBadge} ${exception.trang_thai === 'KHONG_DAT' ? styles.aiBadgeFail : styles.aiBadgeMissing}`}>
-                          {aiExceptionStatusLabels[exception.trang_thai]}
-                        </span>
+                        <strong>{failure.item_id}</strong>
+                        {criticalSet.has(failure.item_id) && (
+                          <span className={`${styles.aiBadge} ${styles.aiBadgeFail}`}>Nghiêm trọng</span>
+                        )}
                       </div>
-                      {catalog[exception.item_id] && <p className={styles.aiCriterion}>{catalog[exception.item_id]}</p>}
-                      {exception.bang_chung && <p className={styles.aiEvidence}>“{exception.bang_chung}”</p>}
-                      {exception.ghi_chu && <p className={styles.aiNote}>{exception.ghi_chu}</p>}
+                      {catalog[failure.item_id] && <p className={styles.aiCriterion}>{catalog[failure.item_id]}</p>}
+                      {failure.ly_do && <p className={styles.aiNote}>{failure.ly_do}</p>}
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className={styles.aiAllPass}><CircleCheck size={15} /> Không có tiêu chí nào chưa đạt hoặc thiếu dữ liệu.</p>
               )}
-              {result.tong_ket.khuyen_nghi && (
+              {result.khuyen_nghi && (
                 <div className={styles.aiRecommendation}>
                   <strong>Khuyến nghị</strong>
-                  <p>{result.tong_ket.khuyen_nghi}</p>
+                  <p>{result.khuyen_nghi}</p>
                 </div>
-              )}
-              {result.dat_ids.length > 0 && (
-                <details className={styles.aiPassDetails}>
-                  <summary>Tiêu chí đạt ({result.dat_ids.length})</summary>
-                  <ul>
-                    {result.dat_ids.map((id) => (
-                      <li key={id}><strong>{id}</strong> {catalog[id] ?? ''}</li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-              {data?.meta?.model && (
-                <p className={styles.aiRunMeta}>
-                  {data.meta.model} · {data.meta.pipeline_version} · {data.meta.latency_ms} ms · {data.meta.total_tokens} tokens
-                </p>
               )}
             </>
           )}
