@@ -1,6 +1,5 @@
 create extension if not exists pgcrypto;
 
-create type public.staff_role as enum ('admin', 'clinician', 'nurse', 'receptionist', 'billing', 'auditor');
 create type public.patient_sex as enum ('FEMALE', 'MALE', 'OTHER');
 create type public.encounter_status as enum ('WAITING', 'IN_PROGRESS', 'RESULT_READY', 'COMPLETED', 'CANCELLED');
 create type public.clinical_note_type as enum ('PROGRESS', 'ASSESSMENT', 'PLAN', 'DISCHARGE');
@@ -16,7 +15,6 @@ create table public.departments (
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text not null default '',
-  role public.staff_role not null default 'receptionist',
   department_id uuid references public.departments(id),
   active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -111,30 +109,31 @@ alter table public.encounters enable row level security;
 alter table public.clinical_notes enable row level security;
 alter table public.audit_events enable row level security;
 
-create or replace function public.current_staff_role()
-returns public.staff_role language sql stable security definer set search_path = '' as $$
-  select role from public.profiles where id = auth.uid() and active = true;
+create or replace function public.is_active_doctor()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+    select 1 from public.profiles where id = auth.uid() and active = true
+  );
 $$;
 
 create policy "authenticated can read departments" on public.departments for select to authenticated using (true);
 create policy "users can read own profile" on public.profiles for select to authenticated using (id = auth.uid());
-create policy "clinical staff can read patients" on public.patients for select to authenticated
-using (public.current_staff_role() in ('admin', 'clinician', 'nurse', 'receptionist'));
-create policy "registry staff can create patients" on public.patients for insert to authenticated
-with check (public.current_staff_role() in ('admin', 'clinician', 'nurse', 'receptionist'));
-create policy "clinical staff can read encounters" on public.encounters for select to authenticated
-using (public.current_staff_role() in ('admin', 'clinician', 'nurse', 'receptionist'));
-create policy "clinical staff can create encounters" on public.encounters for insert to authenticated
-with check (created_by = auth.uid() and public.current_staff_role() in ('admin', 'clinician', 'nurse', 'receptionist'));
-create policy "clinicians update encounters" on public.encounters for update to authenticated
-using (public.current_staff_role() in ('admin', 'clinician', 'nurse'))
-with check (public.current_staff_role() in ('admin', 'clinician', 'nurse'));
-create policy "clinical staff read notes" on public.clinical_notes for select to authenticated
-using (public.current_staff_role() in ('admin', 'clinician', 'nurse'));
-create policy "clinical staff create notes" on public.clinical_notes for insert to authenticated
-with check (authored_by = auth.uid() and public.current_staff_role() in ('admin', 'clinician', 'nurse'));
-create policy "auditors read audit log" on public.audit_events for select to authenticated
-using (public.current_staff_role() in ('admin', 'auditor'));
+create policy "doctors can read patients" on public.patients for select to authenticated
+using (public.is_active_doctor());
+create policy "doctors can create patients" on public.patients for insert to authenticated
+with check (public.is_active_doctor());
+create policy "doctors can read encounters" on public.encounters for select to authenticated
+using (public.is_active_doctor());
+create policy "doctors can create encounters" on public.encounters for insert to authenticated
+with check (created_by = auth.uid() and public.is_active_doctor());
+create policy "doctors can update encounters" on public.encounters for update to authenticated
+using (public.is_active_doctor()) with check (public.is_active_doctor());
+create policy "doctors can read notes" on public.clinical_notes for select to authenticated
+using (public.is_active_doctor());
+create policy "doctors can create notes" on public.clinical_notes for insert to authenticated
+with check (authored_by = auth.uid() and public.is_active_doctor());
+create policy "doctors can read own audit events" on public.audit_events for select to authenticated
+using (actor_id = auth.uid() and public.is_active_doctor());
 
 revoke update, delete on public.audit_events from anon, authenticated;
 revoke delete on public.patients, public.encounters, public.clinical_notes from anon, authenticated;

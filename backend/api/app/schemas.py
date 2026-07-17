@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic import EmailStr
 
 
 class ApiModel(BaseModel):
@@ -87,52 +88,43 @@ class Workspace(ApiModel):
     patient: dict[str, Any]
     encounter: dict[str, Any]
     notes: list[dict[str, Any]]
+    vital_signs: dict[str, Any] | None = None
+    diagnoses: list[dict[str, Any]] = Field(default_factory=list)
+    conclusion: dict[str, Any] | None = None
 
 
-class SimulatedVisit(ApiModel):
-    visit_code: str
-    visit_datetime: datetime
-    reason: str
-    department: str
-    clinic: str
-
-
-class SimulatedPatient(ApiModel):
-    full_name: str
-    age: int
-    gender: str
-    phone: str
-    address: str
-
-
-class SimulatedVitalSigns(ApiModel):
-    mach_lan_phut: int | None = None
-    nhiet_do_c: float | None = None
-    huyet_ap_tam_thu_mmhg: int | None = None
-    huyet_ap_tam_truong_mmhg: int | None = None
-    nhip_tho_lan_phut: int | None = None
-    chieu_cao_cm: float | None = None
-    can_nang_kg: float | None = None
-    bmi: float | None = None
-    duong_huyet_mg_dl: float | None = None
-
-
-class SimulatedClinicalNote(ApiModel):
-    dien_bien: str
-    huong_xu_tri: str
-
-
-class SimulatedDiagnosis(ApiModel):
-    icd10: str
-    mo_ta: str
-
-
-class SimulatedClinicalRecord(ApiModel):
-    record_id: str
-    visit: SimulatedVisit
-    patient: SimulatedPatient
-    vital_signs: SimulatedVitalSigns
-    clinical_note: SimulatedClinicalNote
-    diagnosis: SimulatedDiagnosis
-    doctor: str
+class ClinicalRecordImport(ApiModel):
+    record_id: str = Field(min_length=1, max_length=100)
+    visit: dict[str, Any]
+    patient: dict[str, Any]
+    vital_signs: dict[str, Any]
+    clinical_note: dict[str, Any]
+    diagnosis: dict[str, Any]
+    doctor: str = Field(min_length=1)
     signed_at: datetime
+
+
+class ClinicalRecordImportResult(ApiModel):
+    encounter_id: UUID
+
+
+class LoginRequest(ApiModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+
+
+class RefreshTokenRequest(ApiModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class AuthTokens(ApiModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    expires_at: int | None = None
+
+
+class AuthUser(ApiModel):
+    id: UUID
+    email: EmailStr | None = None

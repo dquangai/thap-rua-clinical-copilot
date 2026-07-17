@@ -1,10 +1,10 @@
-# Clinical API (Python + Supabase)
+# Clinical API (Python + Supabase Cloud)
 
-FastAPI service cho identity, patient registry, encounter, clinical notes và audit. Supabase cung cấp PostgreSQL và Auth; access token Supabase được API xác minh qua JWKS.
+FastAPI service dùng Supabase Cloud cho PostgreSQL và Auth. Dự án chỉ có một loại tài khoản đăng nhập là bác sĩ.
 
-## Cài đặt
+## Setup
 
-Yêu cầu Python 3.11+ và một Supabase project.
+Làm theo [hướng dẫn Supabase Cloud](../../docs/supabase-online-setup.md) để tạo project, chạy migration trên Dashboard và cấu hình key.
 
 ```bash
 cd backend/api
@@ -15,44 +15,18 @@ pip install -r requirements.txt
 copy .env.example .env
 ```
 
-Điền `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` trong `.env`. Service role key chỉ nằm ở backend.
-
-### Database local bằng Supabase CLI
-
-Tại thư mục gốc repo:
+Điền thông tin Supabase Cloud vào `.env`, sau đó từ root chạy:
 
 ```bash
-supabase start
-supabase db reset
-```
-
-Với project hosted:
-
-```bash
-supabase link --project-ref <project-ref>
-supabase db push
-```
-
-Migration tạo profile liên kết `auth.users`, RBAC, patient, encounter, clinical note, audit log, index và RLS. Sau khi tạo user trong Supabase Auth, đổi vai trò bằng SQL/Dashboard (chỉ admin vận hành):
-
-```sql
-update public.profiles set role = 'clinician' where id = '<auth-user-uuid>';
-```
-
-## Chạy
-
-Từ root có thể dùng `npm run dev:backend`, hoặc:
-
-```bash
-cd backend/api
-python -m uvicorn app.main:app --reload --port 4000
+npm run dev:backend
 ```
 
 - Health: `GET http://localhost:4000/health`
 - OpenAPI: `http://localhost:4000/docs`
 - API: `/api/v1/patients`, `/api/v1/encounters`, `/api/v1/encounters/{id}/workspace`
+- Auth API: xem [`docs/auth-api.md`](../../docs/auth-api.md)
 
-Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-token>`. Frontend đăng nhập bằng Supabase Auth với anon key rồi chuyển access token cho API. Không log request body vì có thể chứa PII/PHI.
+Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-token>`. Frontend đăng nhập bằng Supabase Auth với publishable key, rồi gửi access token cho API. Secret key chỉ được dùng trong backend và có thể vượt qua RLS.
 
 ## Kiểm thử
 
