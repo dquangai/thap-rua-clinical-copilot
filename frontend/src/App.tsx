@@ -481,8 +481,8 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/dang-nhap" element={status === 'authenticated' ? <Navigate to="/ho-so-benh-an" replace /> : <LoginPage />} />
-      <Route path="/" element={<ProtectedRoute><Navigate to="/ho-so-benh-an" replace /></ProtectedRoute>} />
+      <Route path="/dang-nhap" element={<LoginPage />} />
+      <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )

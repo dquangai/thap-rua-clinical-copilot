@@ -9,7 +9,6 @@ import {
 import type { AuthSession, AuthStatus, AuthTokens, AuthUser } from '../types/auth'
 
 const SESSION_STORAGE_KEY = 'thap-rua.auth.session.v1'
-const DEMO_SESSION_STORAGE_KEY = 'thap-rua.auth.demo.v1'
 const REFRESH_EARLY_SECONDS = 60
 
 export const DEMO_DOCTOR_EMAIL = 'bacsi.demo@thaprua.vn'
@@ -64,7 +63,6 @@ function persistSession(tokens: AuthTokens, user: AuthUser) {
 
 function clearStoredSession() {
   localStorage.removeItem(SESSION_STORAGE_KEY)
-  localStorage.removeItem(DEMO_SESSION_STORAGE_KEY)
 }
 
 function messageFor(error: unknown, isLoginAttempt = false): string {
@@ -105,18 +103,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     if (initializationPromise) return initializationPromise
 
     initializationPromise = (async () => {
-      if (localStorage.getItem(DEMO_SESSION_STORAGE_KEY) === 'true') {
-        set({
-          status: 'authenticated',
-          user: { id: 'demo-doctor', email: DEMO_DOCTOR_EMAIL },
-          accessToken: null,
-          refreshToken: null,
-          expiresAt: null,
-          isDemoMode: true,
-          error: null,
-        })
-        return
-      }
 
       const storedSession = readStoredSession()
       if (!storedSession) {
@@ -180,7 +166,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   enterDemoMode: () => {
     clearStoredSession()
-    localStorage.setItem(DEMO_SESSION_STORAGE_KEY, 'true')
     set({
       status: 'authenticated',
       user: { id: 'demo-doctor', email: DEMO_DOCTOR_EMAIL },
