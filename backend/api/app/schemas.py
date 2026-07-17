@@ -87,3 +87,52 @@ class Workspace(ApiModel):
     patient: dict[str, Any]
     encounter: dict[str, Any]
     notes: list[dict[str, Any]]
+
+
+class SimulatedVisit(ApiModel):
+    visit_code: str
+    visit_datetime: datetime
+    reason: str
+    department: str
+    clinic: str
+
+
+class SimulatedPatient(ApiModel):
+    full_name: str
+    age: int
+    gender: str
+    phone: str
+    address: str
+
+
+class SimulatedVitalSigns(ApiModel):
+    mach_lan_phut: int | None = None
+    nhiet_do_c: float | None = None
+    huyet_ap_tam_thu_mmhg: int | None = None
+    huyet_ap_tam_truong_mmhg: int | None = None
+    nhip_tho_lan_phut: int | None = None
+    chieu_cao_cm: float | None = None
+    can_nang_kg: float | None = None
+    bmi: float | None = None
+    duong_huyet_mg_dl: float | None = None
+
+
+class SimulatedClinicalNote(ApiModel):
+    dien_bien: str
+    huong_xu_tri: str
+
+
+class SimulatedDiagnosis(ApiModel):
+    icd10: str
+    mo_ta: str
+
+
+class SimulatedClinicalRecord(ApiModel):
+    record_id: str
+    visit: SimulatedVisit
+    patient: SimulatedPatient
+    vital_signs: SimulatedVitalSigns
+    clinical_note: SimulatedClinicalNote
+    diagnosis: SimulatedDiagnosis
+    doctor: str
+    signed_at: datetime

@@ -1,4 +1,4 @@
-/** Core clinical concepts shared by UI, API and AI services. */
+﻿/** Core clinical concepts shared by UI, API and AI services. */
 export type PatientStatus = 'WAITING' | 'IN_PROGRESS' | 'RESULT_READY' | 'COMPLETED' | 'CANCELLED'
 
 export interface Patient {
@@ -42,3 +42,51 @@ export interface AiSuggestion {
   createdAt: string
 }
 
+export interface SimulatedVisit {
+  visit_code: string
+  visit_datetime: string
+  reason: string
+  department: string
+  clinic: string
+}
+
+export interface SimulatedPatient {
+  full_name: string
+  age: number
+  gender: 'Nữ' | 'Nam' | 'Khác'
+  phone: string
+  address: string
+}
+
+export interface SimulatedVitalSigns {
+  mach_lan_phut: number | null
+  nhiet_do_c: number | null
+  huyet_ap_tam_thu_mmhg: number | null
+  huyet_ap_tam_truong_mmhg: number | null
+  nhip_tho_lan_phut: number | null
+  chieu_cao_cm: number | null
+  can_nang_kg: number | null
+  bmi: number | null
+  duong_huyet_mg_dl: number | null
+}
+
+export interface SimulatedClinicalNote {
+  dien_bien: string
+  huong_xu_tri: string
+}
+
+export interface SimulatedDiagnosis {
+  icd10: string
+  mo_ta: string
+}
+
+export interface SimulatedClinicalRecord {
+  record_id: string
+  visit: SimulatedVisit
+  patient: SimulatedPatient
+  vital_signs: SimulatedVitalSigns
+  clinical_note: SimulatedClinicalNote
+  diagnosis: SimulatedDiagnosis
+  doctor: string
+  signed_at: string
+}
