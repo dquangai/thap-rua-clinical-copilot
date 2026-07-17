@@ -10,12 +10,12 @@ class Settings(BaseSettings):
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
     supabase_url: str = ""
-    supabase_anon_key: str = ""
-    supabase_service_role_key: str = Field(default="", repr=False)
+    supabase_publishable_key: str = Field(default="", repr=False)
+    supabase_secret_key: str = Field(default="", repr=False)
 
     @property
     def supabase_configured(self) -> bool:
-        return bool(self.supabase_url and self.supabase_service_role_key)
+        return bool(self.supabase_url and self.supabase_publishable_key and self.supabase_secret_key)
 
 
 @lru_cache

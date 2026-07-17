@@ -4,6 +4,7 @@ from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic import EmailStr
 
 
 class ApiModel(BaseModel):
@@ -87,3 +88,43 @@ class Workspace(ApiModel):
     patient: dict[str, Any]
     encounter: dict[str, Any]
     notes: list[dict[str, Any]]
+    vital_signs: dict[str, Any] | None = None
+    diagnoses: list[dict[str, Any]] = Field(default_factory=list)
+    conclusion: dict[str, Any] | None = None
+
+
+class ClinicalRecordImport(ApiModel):
+    record_id: str = Field(min_length=1, max_length=100)
+    visit: dict[str, Any]
+    patient: dict[str, Any]
+    vital_signs: dict[str, Any]
+    clinical_note: dict[str, Any]
+    diagnosis: dict[str, Any]
+    doctor: str = Field(min_length=1)
+    signed_at: datetime
+
+
+class ClinicalRecordImportResult(ApiModel):
+    encounter_id: UUID
+
+
+class LoginRequest(ApiModel):
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=200)
+
+
+class RefreshTokenRequest(ApiModel):
+    refresh_token: str = Field(min_length=1)
+
+
+class AuthTokens(ApiModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    expires_at: int | None = None
+
+
+class AuthUser(ApiModel):
+    id: UUID
+    email: EmailStr | None = None
