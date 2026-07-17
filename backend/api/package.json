@@ -2,9 +2,9 @@
   "name": "@thap-rua/api",
   "private": true,
   "version": "0.1.0",
-  "type": "module",
   "scripts": {
-    "dev": "node src/server.js",
-    "start": "node src/server.js"
+    "dev": "python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 4000",
+    "start": "python -m uvicorn app.main:app --host 0.0.0.0 --port 4000",
+    "test": "python -m pytest"
   }
 }
