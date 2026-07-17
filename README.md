@@ -41,4 +41,5 @@ Backend dùng Python/FastAPI, Supabase PostgreSQL và Supabase Auth. Xem hướn
 
 ## Tài liệu AI compliance checker
 
-Xem mô tả kỹ thuật đầy đủ tại [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md).
+- Hướng dẫn chạy: [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md).
+- Tài liệu kỹ thuật đầy đủ: [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md).
