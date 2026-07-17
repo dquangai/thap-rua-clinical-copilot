@@ -1,0 +1,14 @@
+{
+  "name": "thap-rua-clinical-copilot",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["frontend", "backend/*", "packages/*"],
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "dev:backend": "npm --workspace @thap-rua/api run dev",
+    "build": "npm --workspace frontend run build",
+    "preview": "npm --workspace frontend run preview",
+    "start:backend": "npm --workspace @thap-rua/api run start"
+  }
+}
