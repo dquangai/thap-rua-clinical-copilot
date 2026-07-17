@@ -1,0 +1,38 @@
+{
+  "record_id": "SIM-001",
+  "visit": {
+    "visit_code": "KB170720260740",
+    "visit_datetime": "2026-07-17T07:40:00",
+    "reason": "KHÁM THAI ĐỊNH KÌ",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "NGUYỄN THỊ MAI ANH",
+    "age": 26,
+    "gender": "Nữ",
+    "phone": "0903214567",
+    "address": "KP3, Phường Long Hoa, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": null,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": null,
+    "huyet_ap_tam_truong_mmhg": null,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 158,
+    "can_nang_kg": 50,
+    "bmi": 20.03,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 0000\nDự sanh ngày: 26/01/2027  theo siêu âm thai 8 tuần\nTiền căn:  Nội - Ngoại khoa: không\nSản khoa: không\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa:\nXét Nghiệm:\nSàng lọc bé:\nSàng lọc nguy cơ TSG:\nSàng lọc mẹ:\nTest dung nạp đường: (HbA1c:)\nGBS:\nSiêu Âm:\nĐộ mờ da gáy: 1.4 mm\nCRL: 60 mm, tim thai (+), 01 thai trong buồng tử cung\nHình thái học :\nSiêu âm tim thai qua thành bụng:\nKhám hiện tại:\nTỉnh, niêm hồng\nBụng mềm\nÂm đạo hiện không ra huyết",
+    "huong_xu_tri": "TOA VỀ: SẮT 30MG 1V/NGÀY, ACID FOLIC 800MCG 1V/NGÀY, CANXI 1000MG/NGÀY\nTÁI KHÁM SAU 04 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ"
+  },
+  "diagnosis": {
+    "icd10": "Z34.0",
+    "mo_ta": "THAI 12 TUẦN 03 NGÀY"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T08:05:00"
+}

@@ -1,0 +1,38 @@
+{
+  "record_id": "SIM-003",
+  "visit": {
+    "visit_code": "KB170720260920",
+    "visit_datetime": "2026-07-17T09:20:00",
+    "reason": "KHÁM THAI ĐỊNH KÌ",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "LÊ THỊ HỒNG NHUNG",
+    "age": 35,
+    "gender": "Nữ",
+    "phone": "0938562471",
+    "address": "KP Ninh Phúc, Phường Ninh Thạnh, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": 90,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": 148,
+    "huyet_ap_tam_truong_mmhg": 96,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 155,
+    "can_nang_kg": 68,
+    "bmi": 28.3,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 2002\nDự sanh ngày: 22/10/2026  theo siêu âm thai 10 tuần\nTiền căn:  Nội - Ngoại khoa: không\nSản khoa: tiền sản giật thai lần 2 (2021), sinh thường 37 tuần\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa: 2 VAT\nXét Nghiệm:\nSàng lọc bé: NCT\nSàng lọc nguy cơ TSG: NCT\nSàng lọc mẹ: nhóm máu B+, HIV âm tính, HBsAg âm tính, giang mai âm tính\nTest dung nạp đường: (HbA1c:)\nGBS:\nSiêu Âm:\nĐộ mờ da gáy: 1.3 mm\nHình thái học : Bình thường (lúc 21 tuần 4 ngày)\nSiêu âm tim thai qua thành bụng: đã tư vấn\nKhám hiện tại:\nTỉnh, niêm hồng\nPhù nhẹ 2 chi dưới\nBụng mềm\nTim thai (150 l/ph)\nBCTC: 24 cm, VB: 88 cm\nÂm đạo hiện không ra huyết\nTăng 4 kg trong 4 tuần",
+    "huong_xu_tri": "TOA VỀ\nTÁI KHÁM SAU 04 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ"
+  },
+  "diagnosis": {
+    "icd10": "Z34",
+    "mo_ta": "THAI 26 TUẦN 01 NGÀY"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T10:02:00"
+}
