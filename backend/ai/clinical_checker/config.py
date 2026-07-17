@@ -29,6 +29,7 @@ class Settings:
     output_price_per_million_usd: float
     pipeline_version: str
     pii_fail_closed: bool
+    use_json_schema: bool = True
 
     @classmethod
     def from_env(cls, env_path: Path | None = None) -> "Settings":
@@ -36,11 +37,19 @@ class Settings:
             load_dotenv(env_path)
         provider = os.getenv("LLM_PROVIDER", "openai").lower()
         default_url = "https://api.anthropic.com/v1" if provider == "anthropic" else "https://api.openai.com/v1"
+        base_url = os.getenv("LLM_BASE_URL", default_url).rstrip("/")
+        # DeepSeek (OpenAI-compatible) chua ho tro response_format json_schema strict.
+        use_json_schema_env = os.getenv("LLM_USE_JSON_SCHEMA", "auto").lower()
+        if use_json_schema_env == "auto":
+            use_json_schema = "deepseek" not in base_url
+        else:
+            use_json_schema = use_json_schema_env == "true"
         return cls(
             provider=provider,
             model=os.getenv("LLM_MODEL", "gpt-4.1-mini"),
             api_key=os.getenv("LLM_API_KEY", ""),
-            base_url=os.getenv("LLM_BASE_URL", default_url).rstrip("/"),
+            base_url=base_url,
+            use_json_schema=use_json_schema,
             timeout_seconds=float(os.getenv("LLM_TIMEOUT_SECONDS", "90")),
             max_output_tokens=int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "4000")),
             input_price_per_million_usd=float(os.getenv("LLM_INPUT_PRICE_PER_MILLION_USD", "0")),

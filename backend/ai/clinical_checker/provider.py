@@ -31,7 +31,7 @@ def call_llm(settings: Settings, system: str, user: str,
         headers = {"Authorization": f"Bearer {settings.api_key}"}
         response_format = ({"type": "json_schema", "json_schema": {
             "name": "clinical_compliance", "strict": True, "schema": response_schema,
-        }} if response_schema else {"type": "json_object"})
+        }} if response_schema and settings.use_json_schema else {"type": "json_object"})
         payload = {"model": settings.model, "max_tokens": settings.max_output_tokens,
                    "response_format": response_format,
                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
