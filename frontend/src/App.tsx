@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import {
   Activity,
@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
+  CircleCheck,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
@@ -23,6 +24,7 @@ import {
   House,
   Info,
   ListRestart,
+  LoaderCircle,
   LogOut,
   Megaphone,
   Menu,
@@ -32,14 +34,18 @@ import {
   Save,
   Search,
   Settings,
+  ShieldCheck,
   Stethoscope,
   Syringe,
+  TriangleAlert,
   UserRoundCheck,
   Users,
   X,
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
+import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
 import { useClinicalStore } from './store/useClinicalStore'
+import type { AiCheckResponse, AiExceptionStatus } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
@@ -276,9 +282,135 @@ function SectionTitle({ icon: Icon, title, trailing }: { icon: typeof Info; titl
   )
 }
 
+type AiCheckState = {
+  open: boolean
+  loading: boolean
+  error: string
+  data: AiCheckResponse | null
+}
+
+const aiExceptionStatusLabels: Record<AiExceptionStatus, string> = {
+  KHONG_DAT: 'Không đạt',
+  THIEU_DU_LIEU: 'Thiếu dữ liệu',
+}
+
+function AiCheckModal({ state, onClose }: { state: AiCheckState; onClose: () => void }) {
+  const { loading, error, data } = state
+  const result = data?.result
+  const catalog = data?.criteria_catalog ?? {}
+  const gestationalAge = result?.scope_filter.gestational_age
+
+  return (
+    <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Kết quả kiểm tra hồ sơ bằng AI">
+      <div className={styles.aiModal}>
+        <header className={styles.aiModalHead}>
+          <div><ShieldCheck size={17} /><h2>Kiểm tra tuân thủ hồ sơ (AI)</h2></div>
+          <button type="button" onClick={onClose} aria-label="Đóng kết quả kiểm tra"><X size={16} /></button>
+        </header>
+        <div className={styles.aiModalBody}>
+          {loading && (
+            <div className={styles.aiLoading}>
+              <LoaderCircle size={22} className={styles.aiSpinner} />
+              <p>Đang gửi hồ sơ (đã ẩn thông tin định danh) đến AI để kiểm tra...</p>
+            </div>
+          )}
+          {!loading && error && (
+            <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>
+          )}
+          {!loading && result && (
+            <>
+              <div className={styles.aiChips}>
+                <span className={`${styles.aiChip} ${styles.aiChipPass}`}>Đạt: {result.criteria_summary.dat_count}</span>
+                <span className={`${styles.aiChip} ${styles.aiChipFail}`}>Không đạt: {result.criteria_summary.khong_dat_count}</span>
+                <span className={`${styles.aiChip} ${styles.aiChipMissing}`}>Thiếu dữ liệu: {result.criteria_summary.thieu_du_lieu_count}</span>
+                <span className={styles.aiChip}>Áp dụng: {result.criteria_summary.criteria_applicable} tiêu chí</span>
+              </div>
+              {gestationalAge?.detected && (
+                <p className={styles.aiMetaLine}>
+                  Tuổi thai: <strong>{gestationalAge.weeks} tuần {gestationalAge.days} ngày ({gestationalAge.trimester})</strong>
+                  {' '}· Gửi {result.scope_filter.criteria_sent_to_llm} tiêu chí, loại {result.scope_filter.criteria_excluded_locally} tiêu chí ngoài tam cá nguyệt
+                </p>
+              )}
+              {result.tong_ket.vi_pham_critical.length > 0 && (
+                <div className={styles.aiCritical}>
+                  <TriangleAlert size={15} />
+                  <p>Vi phạm nghiêm trọng: <strong>{result.tong_ket.vi_pham_critical.join(', ')}</strong></p>
+                </div>
+              )}
+              {result.exceptions.length > 0 ? (
+                <ul className={styles.aiExceptionList}>
+                  {result.exceptions.map((exception) => (
+                    <li key={exception.item_id}>
+                      <div className={styles.aiExceptionHead}>
+                        <strong>{exception.item_id}</strong>
+                        <span className={`${styles.aiBadge} ${exception.trang_thai === 'KHONG_DAT' ? styles.aiBadgeFail : styles.aiBadgeMissing}`}>
+                          {aiExceptionStatusLabels[exception.trang_thai]}
+                        </span>
+                      </div>
+                      {catalog[exception.item_id] && <p className={styles.aiCriterion}>{catalog[exception.item_id]}</p>}
+                      {exception.bang_chung && <p className={styles.aiEvidence}>“{exception.bang_chung}”</p>}
+                      {exception.ghi_chu && <p className={styles.aiNote}>{exception.ghi_chu}</p>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className={styles.aiAllPass}><CircleCheck size={15} /> Không có tiêu chí nào chưa đạt hoặc thiếu dữ liệu.</p>
+              )}
+              {result.tong_ket.khuyen_nghi && (
+                <div className={styles.aiRecommendation}>
+                  <strong>Khuyến nghị</strong>
+                  <p>{result.tong_ket.khuyen_nghi}</p>
+                </div>
+              )}
+              {result.dat_ids.length > 0 && (
+                <details className={styles.aiPassDetails}>
+                  <summary>Tiêu chí đạt ({result.dat_ids.length})</summary>
+                  <ul>
+                    {result.dat_ids.map((id) => (
+                      <li key={id}><strong>{id}</strong> {catalog[id] ?? ''}</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+              {data?.meta?.model && (
+                <p className={styles.aiRunMeta}>
+                  {data.meta.model} · {data.meta.pipeline_version} · {data.meta.latency_ms} ms · {data.meta.total_tokens} tokens
+                </p>
+              )}
+            </>
+          )}
+        </div>
+        <footer className={styles.aiDisclaimer}>
+          Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế.
+        </footer>
+      </div>
+    </div>
+  )
+}
+
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
   const vitalSigns = patient.vitalSigns
+  const progressRef = useRef<HTMLTextAreaElement>(null)
+  const planRef = useRef<HTMLTextAreaElement>(null)
+  const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
+  const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
+
+  const runAiCheck = async () => {
+    setAiCheck({ open: true, loading: true, error: '', data: null })
+    try {
+      const record = buildCheckerRecord(patient, {
+        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+      })
+      const data = await checkClinicalRecord(record)
+      setAiCheck((state) => ({ ...state, loading: false, data }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Lỗi không xác định khi kiểm tra hồ sơ'
+      setAiCheck((state) => ({ ...state, loading: false, error: message }))
+    }
+  }
 
   return (
     <section className={styles.recordPanel}>
@@ -318,7 +450,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
                 <button type="button" onClick={() => notify('Đã load lịch sử')}><History size={14} />Load lịch sử</button>
               </div>
-              <textarea key={`${patient.medicalId}-progress`} defaultValue={patient.clinicalProgress} aria-label="Diễn biến bệnh" />
+              <textarea key={`${patient.medicalId}-progress`} ref={progressRef} defaultValue={patient.clinicalProgress} aria-label="Diễn biến bệnh" />
             </div>
           </article>
 
@@ -329,7 +461,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 <button type="button" onClick={() => notify('Đã tạo mẫu')}><ClipboardPlus size={14} />Tạo mẫu</button>
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
               </div>
-              <textarea key={`${patient.medicalId}-plan`} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
+              <textarea key={`${patient.medicalId}-plan`} ref={planRef} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
             </div>
           </article>
 
@@ -410,7 +542,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
               </div>
               <label className={styles.diagnosisNote}>
                 <span>Ghi chú chẩn đoán</span>
-                <textarea className={styles.diagnosisSummary} defaultValue={patient.diagnoses.summary} aria-label="Nội dung chẩn đoán" />
+                <textarea key={`${patient.medicalId}-diagnosis`} ref={diagnosisSummaryRef} className={styles.diagnosisSummary} defaultValue={patient.diagnoses.summary} aria-label="Nội dung chẩn đoán" />
               </label>
             </div>
           </article>
@@ -419,9 +551,14 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
       <footer className={styles.actionBar}>
         <button type="button" onClick={() => notify('Đang mở tiền sử dị ứng')}><HeartPulse size={16} />Tiền sử dị ứng</button>
         <button type="button" onClick={() => notify('Đang mở thông tin khám')}><Info size={16} />Xem thông tin khám</button>
+        <button type="button" className={styles.aiCheckButton} onClick={runAiCheck} disabled={aiCheck.loading}>
+          {aiCheck.loading ? <LoaderCircle size={16} className={styles.aiSpinner} /> : <ShieldCheck size={16} />}
+          Kiểm tra hồ sơ (AI)
+        </button>
         <button type="button" className={styles.saveButton} onClick={() => notify('Đã lưu hồ sơ khám')}><Save size={16} />Lưu</button>
         <button type="button" className={styles.cancelButton} onClick={() => notify('Đã hủy thay đổi')}><X size={16} />Hủy</button>
       </footer>
+      {aiCheck.open && <AiCheckModal state={aiCheck} onClose={() => setAiCheck((state) => ({ ...state, open: false }))} />}
     </section>
   )
 }
