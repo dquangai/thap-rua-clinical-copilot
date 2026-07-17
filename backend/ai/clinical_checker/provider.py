@@ -17,7 +17,8 @@ class LlmResponse:
     request_id: str | None
 
 
-def call_llm(settings: Settings, system: str, user: str) -> LlmResponse:
+def call_llm(settings: Settings, system: str, user: str,
+             response_schema: dict[str, Any] | None = None) -> LlmResponse:
     if not settings.api_key or settings.api_key == "replace_me":
         raise RuntimeError("LLM_API_KEY chua duoc cau hinh")
     if settings.provider == "anthropic":
@@ -28,8 +29,11 @@ def call_llm(settings: Settings, system: str, user: str) -> LlmResponse:
     elif settings.provider == "openai":
         url = f"{settings.base_url}/chat/completions"
         headers = {"Authorization": f"Bearer {settings.api_key}"}
+        response_format = ({"type": "json_schema", "json_schema": {
+            "name": "clinical_compliance", "strict": True, "schema": response_schema,
+        }} if response_schema else {"type": "json_object"})
         payload = {"model": settings.model, "max_tokens": settings.max_output_tokens,
-                   "response_format": {"type": "json_object"},
+                   "response_format": response_format,
                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     else:
         raise ValueError(f"Provider khong ho tro: {settings.provider}")

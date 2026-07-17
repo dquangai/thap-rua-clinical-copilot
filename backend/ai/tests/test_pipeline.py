@@ -4,8 +4,12 @@ import tempfile
 from pathlib import Path
 
 from clinical_checker.cli import load_rules
-from clinical_checker.pipeline import (extract_required_criteria, merge_repair_rows,
-                                       normalize_null_statuses, validate_and_summarize)
+from clinical_checker.pipeline import (build_public_result, detect_gestational_age, compact_json_schema,
+                                       expand_compact_result, extract_required_criteria,
+                                       filter_criteria_by_trimester,
+                                       merge_repair_rows, normalize_null_statuses,
+                                       normalize_exceptions_container, prepare_compact_for_validation,
+                                       repair_json_schema, validate_and_summarize)
 
 
 class PipelineTests(unittest.TestCase):
@@ -57,6 +61,93 @@ class PipelineTests(unittest.TestCase):
             loaded = load_rules(root)
             self.assertEqual(loaded["sources"], ["a.json", "b.json"])
             self.assertEqual([x["rule_id"] for x in loaded["rules"]], ["R01", "R02"])
+
+    def test_detects_trimester_from_diagnosis(self):
+        first = detect_gestational_age({"diagnosis": {"mo_ta": "THAI 12 TUẦN 03 NGÀY"}})
+        self.assertEqual((first["weeks"], first["days"], first["trimester"]), (12, 3, "TCN1"))
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 21 TUẦN 05 NGÀY"}})["trimester"], "TCN2")
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 35 TUẦN"}})["trimester"], "TCN3")
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 13 TUẦN 06 NGÀY"}})["trimester"], "TCN1")
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 14 TUẦN 00 NGÀY"}})["trimester"], "TCN2")
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 28 TUẦN 06 NGÀY"}})["trimester"], "TCN2")
+        self.assertEqual(detect_gestational_age({"diagnosis": {"mo_ta": "THAI 29 TUẦN 00 NGÀY"}})["trimester"], "TCN3")
+
+    def test_filters_only_trimester_specific_criteria(self):
+        criteria = [
+            {"item_id": "COMMON", "scope": {}},
+            {"item_id": "T1", "scope": {"tam_ca_nguyet": "TCN1"}},
+            {"item_id": "T2", "scope": {"tam_ca_nguyet": "TCN2"}},
+        ]
+        selected, excluded = filter_criteria_by_trimester(criteria, "TCN1")
+        self.assertEqual([x["item_id"] for x in selected], ["COMMON", "T1"])
+        self.assertEqual([x["item_id"] for x in excluded], ["T2"])
+        self.assertEqual(len(filter_criteria_by_trimester(criteria, None)[0]), 3)
+
+    def test_expands_compact_output_with_complete_coverage(self):
+        compact = {
+            "dat_ids": ["R01.1"], "khong_ap_dung_ids": ["R01.2"],
+            "exceptions": [{"item_id": "R01.3", "trang_thai": "KHONG_DAT", "ghi_chu": "missing"}],
+        }
+        result = expand_compact_result(compact, ["R01.1", "R01.2", "R01.3"])
+        summary = validate_and_summarize(result, ["R01.1", "R01.2", "R01.3"])
+        self.assertEqual(summary["counts"]["DAT"], 1)
+        self.assertEqual(summary["counts"]["KHONG_DAT"], 1)
+
+    def test_compact_output_rejects_missing_or_duplicate_ids(self):
+        with self.assertRaises(Exception):
+            expand_compact_result({"dat_ids": ["R01.1", "R01.1"], "khong_ap_dung_ids": [],
+                                   "exceptions": []}, ["R01.1", "R01.2"])
+
+    def test_prepares_compact_output_and_repairs_only_conflicts(self):
+        compact = {
+            "dat_ids": ["R01.1", "R01.2"], "khong_ap_dung_ids": ["R01.2"],
+            "exceptions": [{"item_id": "R01.3", "trang_thai": "KHONG_AP_DUNG"}],
+        }
+        prepared, repair_ids, notes = prepare_compact_for_validation(
+            compact, ["R01.1", "R01.2", "R01.3"])
+        self.assertEqual(prepared["dat_ids"], ["R01.1"])
+        self.assertEqual(prepared["khong_ap_dung_ids"], ["R01.3"])
+        self.assertEqual(repair_ids, ["R01.2"])
+        self.assertEqual(notes["normalized_not_applicable_ids"], ["R01.3"])
+
+    def test_normalizes_grouped_exception_object(self):
+        rows = normalize_exceptions_container({
+            "KHONG_DAT": [{"item_id": "R01.1", "ghi_chu": "x"}],
+            "thieu_du_lieu": ["R01.2"],
+        })
+        self.assertEqual(rows[0]["trang_thai"], "KHONG_DAT")
+        self.assertEqual(rows[1], {"item_id": "R01.2", "trang_thai": "THIEU_DU_LIEU",
+                                   "bang_chung": "", "ghi_chu": ""})
+
+    def test_normalizes_exception_id_map(self):
+        rows = normalize_exceptions_container({
+            "R01.1": "KHONG_DAT",
+            "R01.2": {"trang_thai": "THIEU_DU_LIEU", "ghi_chu": "missing"},
+        })
+        self.assertEqual(rows[0]["item_id"], "R01.1")
+        self.assertEqual(rows[1]["trang_thai"], "THIEU_DU_LIEU")
+        aliased = normalize_exceptions_container({"R01.3": {"status": "KHONG_DAT", "reason": "missing"}})
+        self.assertEqual(aliased[0]["ghi_chu"], "missing")
+
+    def test_compact_json_schema_is_strict_and_requires_arrays(self):
+        schema = compact_json_schema()
+        self.assertFalse(schema["additionalProperties"])
+        self.assertEqual(schema["properties"]["exceptions"]["type"], "array")
+        self.assertIn("dat_ids", schema["required"])
+        repair_schema = repair_json_schema()
+        self.assertEqual(repair_schema["properties"]["evaluations"]["type"], "array")
+
+    def test_public_result_omits_not_applicable_criteria(self):
+        internal = {"ket_qua_theo_rule": [
+            {"item_id": "PASS", "trang_thai": "DAT"},
+            {"item_id": "FAIL", "trang_thai": "KHONG_DAT", "bang_chung": "", "ghi_chu": "x"},
+            {"item_id": "NA", "trang_thai": "KHONG_AP_DUNG"},
+        ]}
+        summary = validate_and_summarize(internal, ["PASS", "FAIL", "NA"])
+        public = build_public_result(internal, summary, {"trimester": "TCN1"}, 3, 20)
+        self.assertEqual(public["dat_ids"], ["PASS"])
+        self.assertEqual([x["item_id"] for x in public["exceptions"]], ["FAIL"])
+        self.assertNotIn("NA", str(public))
 
 
 if __name__ == "__main__":

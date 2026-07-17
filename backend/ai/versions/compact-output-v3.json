@@ -1,0 +1,32 @@
+{
+  "pipeline_version": "compact-output-v3",
+  "status": "candidate",
+  "parent_version": "trimester-v2",
+  "output_contract": {
+    "dat_ids": "IDs that passed; no evidence text",
+    "khong_ap_dung_ids": "IDs not applicable after LLM conditional evaluation",
+    "exceptions": "Only KHONG_DAT or THIEU_DU_LIEU with evidence and notes"
+  },
+  "coverage_policy": "The union of all three groups must exactly equal REQUIRED_CRITERIA with no duplicate or unknown ID.",
+  "compatibility_policy": "Expand compact provider output locally to the existing 53-row result contract.",
+  "benchmark_2026_07_17": {
+    "records": 3,
+    "trimester_v2_average": {
+      "latency_ms": 25960.77,
+      "input_tokens": 3598.33,
+      "output_tokens": 1846.0,
+      "total_tokens": 5444.33,
+      "estimated_cost_usd": 0.00439293,
+      "api_calls": 1.33
+    },
+    "compact_v3_average": {
+      "latency_ms": 16964.26,
+      "input_tokens": 4797.33,
+      "output_tokens": 730.0,
+      "total_tokens": 5527.33,
+      "estimated_cost_usd": 0.00308693,
+      "api_calls": 2.0
+    },
+    "notes": "Strict JSON Schema fixed response shape. All three runs required focused repair because some IDs appeared in conflicting groups; cross-array disjointness is validated locally because JSON Schema cannot express it."
+  }
+}

@@ -50,6 +50,29 @@ nhưng không làm các file còn lại bị bỏ qua.
 Nếu provider trả `trang_thai: null`, guardrail chuẩn hoá thành `THIEU_DU_LIEU` và ghi ID vào
 `normalized_null_criteria`; pipeline không âm thầm coi `null` là đạt hoặc không đạt.
 
+Trước API call, pipeline parse tuổi thai local từ `diagnosis.mo_ta` (hoặc field cấu trúc), xác định
+`TCN1/TCN2/TCN3`, rồi chỉ gửi rule chung và rule của tam cá nguyệt tương ứng. Rule ngoài scope được code local
+thêm lại vào kết quả với `KHONG_AP_DUNG`, nên output cuối vẫn đủ 53 tiêu chí. Nếu không xác định được tuổi thai,
+pipeline fail-safe bằng cách gửi toàn bộ rule. Telemetry ghi `criteria_count_before_scope`,
+`criteria_count_after_scope`, `excluded_by_scope_count` và `gestational_age`.
+
+Provider trả compact output: `dat_ids` cho tiêu chí đạt, `khong_ap_dung_ids` cho tiêu chí không áp dụng và
+`exceptions` chỉ cho `KHONG_DAT/THIEU_DU_LIEU`. Code bắt buộc hợp ba nhóm đúng bằng toàn bộ criteria gửi LLM,
+không trùng/thiếu/ID lạ, rồi mở rộng local về format 53 hàng để giữ tương thích result hiện tại.
+Nếu cùng ID bị lặp với cùng trạng thái, code deduplicate local; `KHONG_AP_DUNG` đặt nhầm trong exceptions được
+chuyển về đúng list. Nếu một ID có hai trạng thái mâu thuẫn, pipeline không tự chọn mà gọi repair cho riêng ID đó.
+Với OpenAI, request dùng strict Structured Outputs (`response_format: json_schema`) để bắt buộc đúng top-level arrays,
+enum trạng thái, required fields và `additionalProperties: false`; validation coverage local vẫn được giữ nguyên.
+Benchmark 3 hồ sơ của `compact-output-v3`: output trung bình 730 tokens, latency 16.96 giây và cost ước tính
+$0.00309/hồ sơ. Mỗi run hiện vẫn cần một focused repair do model đặt một số ID vào hai nhóm mâu thuẫn; đây là
+giới hạn cross-array mà JSON Schema không biểu diễn được và code local không tự quyết định thay model.
+
+Result public của `compact-applicable-v3.1` chỉ ghi `dat_ids` và `exceptions`. Rule ngoài tam cá nguyệt và tiêu chí
+`KHONG_AP_DUNG` không được ghi vào result. `khong_ap_dung_ids` chỉ dùng nội bộ để kiểm tra model đã phân loại đủ
+criteria gửi lên, sau đó bị loại trước khi ghi file.
+Focused repair dùng contract riêng `evaluations[]` với đúng một row mỗi ID thay vì ba list compact, tránh chính
+repair response tiếp tục đặt một ID vào nhiều nhóm.
+
 Chạy test:
 
 ```bash
