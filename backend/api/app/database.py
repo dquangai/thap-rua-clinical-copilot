@@ -14,4 +14,4 @@ def get_admin_client() -> Client:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Supabase is not configured",
         )
-    return create_client(settings.supabase_url, settings.supabase_service_role_key)
+    return create_client(settings.supabase_url, settings.supabase_secret_key)
