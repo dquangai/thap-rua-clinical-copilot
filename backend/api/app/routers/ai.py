@@ -1,9 +1,13 @@
+import json
+import re
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from app.telemetry import write_api_usage
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 AI_PACKAGE_ROOT = REPO_ROOT / "backend" / "ai"
@@ -17,6 +21,11 @@ from clinical_checker.pipeline import (  # noqa: E402
     extract_required_criteria,
     run_check,
 )
+from clinical_checker.privacy import (  # noqa: E402
+    build_minimum_necessary_record,
+    find_residual_pii,
+)
+from clinical_checker.provider import call_llm  # noqa: E402
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -25,9 +34,128 @@ LOG_PATH = REPO_ROOT / "results" / "api-runs.jsonl"
 ENV_PATH = REPO_ROOT / ".env"
 
 
+COUNSELING_SYSTEM_PROMPT = (
+    "Bạn là bác sĩ sản khoa soạn biên bản tư vấn cho thai phụ dựa trên hồ sơ khám đã ẩn danh.\n"
+    "Yêu cầu nội dung:\n"
+    "- Nếu hồ sơ có bệnh lý/nguy cơ (VD: đái tháo đường thai kỳ, tăng huyết áp, tiền sản giật, thiếu máu,"
+    " kết quả bất thường): nêu rõ nguy cơ đã tư vấn, kế hoạch theo dõi cụ thể, dặn dò dấu hiệu cần khám ngay.\n"
+    "- Nếu thai kỳ khỏe mạnh bình thường: tư vấn theo dõi thường quy (dinh dưỡng, vi chất, lịch khám,"
+    " theo dõi cử động thai, dấu hiệu cảnh báo chung).\n"
+    "- Dùng ngôn ngữ cân bằng, trấn an hợp lý, không gây hoang mang; chỉ dựa trên dữ kiện có trong hồ sơ,"
+    " không bịa thêm; không ghi tên hay bất kỳ thông tin định danh nào.\n"
+    "- Nội dung sẽ được chèn vào mẫu biên bản in sẵn đã có tiêu đề: KHÔNG lặp lại tiêu đề 'BIÊN BẢN TƯ VẤN',"
+    " vào thẳng nội dung.\n"
+    "- Bố cục rõ ràng: đoạn mở đầu tóm tắt tình trạng hiện tại; tiếp theo các mục tư vấn đánh số '1.', '2.', '3.'...;"
+    " cuối cùng là câu xác nhận thai phụ đã hiểu và đồng ý kế hoạch theo dõi.\n"
+    "- Viết văn bản thuần để in: không dùng ký hiệu markdown (không **, ##, gạch đầu dòng bằng *).\n"
+    'Trả về JSON đúng định dạng: {"tu_van": ["<đoạn mở đầu>", "<mục 1>", "<mục 2>", ..., "<câu xác nhận>"]}'
+    " — mỗi phần tử của mảng là MỘT đoạn hoặc MỘT mục riêng, sẽ được in thành một dòng/đoạn riêng trong biên bản."
+)
+
+
 class CheckRecordRequest(BaseModel):
     record: dict[str, Any]
     dry_run: bool = Field(default=False, description="Chỉ redact + quét PII, không gọi LLM")
+
+
+class GenerateCounselingRequest(BaseModel):
+    record: dict[str, Any]
+
+
+@router.post("/generate-counseling")
+def generate_counseling(payload: GenerateCounselingRequest) -> dict[str, Any]:
+    settings = CheckerSettings.from_env(ENV_PATH)
+    if not settings.api_key or settings.api_key == "replace_me":
+        raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI generator")
+    safe_record = build_minimum_necessary_record(payload.record)
+    if settings.pii_fail_closed and find_residual_pii(safe_record):
+        raise HTTPException(status_code=422, detail="Phát hiện mẫu PII còn sót trong hồ sơ, đã hủy request")
+    started = time.perf_counter()
+    try:
+        response = call_llm(
+            settings,
+            COUNSELING_SYSTEM_PROMPT,
+            "CLINICAL_RECORD:\n" + json.dumps(safe_record, ensure_ascii=False, sort_keys=True),
+        )
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    try:
+        raw = json.loads(response.text).get("tu_van", "")
+    except (json.JSONDecodeError, AttributeError):
+        raw = response.text
+    if isinstance(raw, list):
+        tu_van = "\n".join(str(part).strip() for part in raw if str(part).strip())
+    else:
+        tu_van = str(raw).strip()
+        # Model trả một khối liền: tách dòng trước các gạch đầu dòng/mục đánh số sau dấu câu.
+        if "\n" not in tu_van:
+            tu_van = re.sub(r"(?<=[.:;]) - ", "\n- ", tu_van)
+            tu_van = re.sub(r"(?<=\.) (?=\d{1,2}\. )", "\n", tu_van)
+    # Chống sót định dạng markdown khi in biên bản.
+    tu_van = tu_van.replace("**", "")
+    if not tu_van:
+        raise HTTPException(status_code=502, detail="LLM không trả về nội dung tư vấn")
+    latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    write_api_usage(
+        endpoint="/api/v1/ai/generate-counseling",
+        method="POST",
+        telemetry={
+            "status": "success",
+            "model": settings.model,
+            "pipeline_version": settings.pipeline_version,
+            "latency_ms": latency_ms,
+            "input_tokens": response.input_tokens,
+            "output_tokens": response.output_tokens,
+            "total_tokens": response.input_tokens + response.output_tokens,
+            "api_calls": 1,
+        },
+    )
+    return {
+        "tu_van": tu_van,
+        "meta": {
+            "model": settings.model,
+            "latency_ms": latency_ms,
+            "total_tokens": response.input_tokens + response.output_tokens,
+        },
+    }
+
+
+def execute_check(record: dict[str, Any]) -> dict[str, Any]:
+    """Worker entry point; deliberately accepts only the record copied into the queue."""
+    settings = CheckerSettings.from_env(ENV_PATH)
+    if not settings.api_key or settings.api_key == "replace_me":
+        raise RuntimeError("LLM_API_KEY chưa được cấu hình cho AI checker")
+    rules = _load_rules_or_503()
+    output = run_check(record, rules, settings, LOG_PATH, dry_run=False)
+    write_api_usage(endpoint="/api/v1/ai/jobs", method="POST", telemetry=output.get("telemetry", {}), status_code=200)
+    return {
+        "run_id": output["run_id"],
+        "result": output["result"],
+        "meta": {
+            key: output.get("telemetry", {}).get(key)
+            for key in ("status", "model", "pipeline_version", "latency_ms", "total_tokens", "api_calls")
+        },
+    }
+
+
+@router.post("/jobs", status_code=status.HTTP_202_ACCEPTED)
+async def create_job(payload: CheckRecordRequest, request: Request) -> dict[str, Any]:
+    if payload.dry_run:
+        raise HTTPException(status_code=400, detail="dry_run chỉ được hỗ trợ tại /ai/check-record")
+    queue = request.app.state.ai_job_queue
+    try:
+        job = await queue.submit(payload.record)
+    except OverflowError as exc:
+        raise HTTPException(status_code=429, detail=str(exc), headers={"Retry-After": "5"}) from exc
+    return {"job_id": job.id, "status": job.status, "status_url": f"/api/v1/ai/jobs/{job.id}"}
+
+
+@router.get("/jobs/{job_id}")
+def get_job(job_id: str, request: Request) -> dict[str, Any]:
+    job = request.app.state.ai_job_queue.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Không tìm thấy AI job")
+    return job.public()
 
 
 def _load_rules_or_503() -> dict[str, Any]:
@@ -58,6 +186,7 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         status_code = 422 if "PII" in message else 502
         raise HTTPException(status_code=status_code, detail=message) from exc
     telemetry = output.get("telemetry", {})
+    write_api_usage(endpoint="/api/v1/ai/check-record", method="POST", telemetry=telemetry, status_code=200)
     meta = {
         "status": telemetry.get("status"),
         "model": telemetry.get("model"),
@@ -65,6 +194,9 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         "latency_ms": telemetry.get("latency_ms"),
         "total_tokens": telemetry.get("total_tokens"),
         "api_calls": telemetry.get("api_calls"),
+        "input_tokens": telemetry.get("input_tokens"),
+        "output_tokens": telemetry.get("output_tokens"),
+        "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
     }
     if payload.dry_run:
         return {"run_id": output["run_id"], "safe_record": output["safe_record"], "meta": meta}

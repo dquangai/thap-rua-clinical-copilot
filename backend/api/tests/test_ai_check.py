@@ -44,3 +44,15 @@ def test_check_record_dry_run_redacts_pii():
     serialized = json.dumps(safe_record, ensure_ascii=False)
     assert "NGUYỄN THỊ MAI ANH" not in serialized
     assert "0903214567" not in serialized
+
+
+def test_async_job_rejects_dry_run():
+    with TestClient(app) as client:
+        response = client.post("/api/v1/ai/jobs", json={"record": SAMPLE_RECORD, "dry_run": True})
+    assert response.status_code == 400
+
+
+def test_unknown_async_job_returns_404():
+    with TestClient(app) as client:
+        response = client.get("/api/v1/ai/jobs/not-a-job")
+    assert response.status_code == 404

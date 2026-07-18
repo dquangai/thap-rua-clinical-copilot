@@ -106,7 +106,8 @@ function toPatientRecord(record: SimRecord, index: number): PatientRecord {
     },
     clinicalProgress: record.clinical_note.dien_bien,
     treatmentPlan: record.clinical_note.huong_xu_tri,
-    counselingRecord: record.clinical_note.tu_van ?? '',
+    // Biên bản tư vấn luôn bắt đầu trống; bác sĩ tạo bằng nút trong card.
+    counselingRecord: '',
     doctor: record.doctor,
     nurseOne: 'NHS. Trương Ngọc Quí',
     nurseTwo: 'Chọn...',
