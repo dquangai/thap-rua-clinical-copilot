@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -33,19 +34,33 @@ def call_llm(settings: Settings, system: str, user: str,
             "name": "clinical_compliance", "strict": True, "schema": response_schema,
         }} if response_schema and settings.use_json_schema else {"type": "json_object"})
         payload = {"model": settings.model, "max_tokens": settings.max_output_tokens,
+                   "temperature": 0,
                    "response_format": response_format,
                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
     else:
         raise ValueError(f"Provider khong ho tro: {settings.provider}")
     headers["Content-Type"] = "application/json"
-    request = urllib.request.Request(url, data=json.dumps(payload).encode(), headers=headers, method="POST")
-    try:
-        with urllib.request.urlopen(request, timeout=settings.timeout_seconds) as response:
-            body = json.loads(response.read())
-            request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
-    except urllib.error.HTTPError as exc:
-        # Do not echo response bodies: upstream error content can contain request data.
-        raise RuntimeError(f"LLM API loi HTTP {exc.code}") from exc
+    request_data = json.dumps(payload).encode()
+    body = None
+    request_id = None
+    max_attempts = 3
+    for attempt in range(max_attempts):
+        request = urllib.request.Request(url, data=request_data, headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=settings.timeout_seconds) as response:
+                body = json.loads(response.read())
+                request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
+            break
+        except urllib.error.HTTPError as exc:
+            # Retry only temporary upstream failures; never echo response bodies because they can contain request data.
+            if exc.code not in {408, 429, 500, 502, 503, 504} or attempt == max_attempts - 1:
+                raise RuntimeError(f"LLM API lỗi HTTP {exc.code}") from exc
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            if attempt == max_attempts - 1:
+                raise RuntimeError("Kết nối đến LLM provider bị gián đoạn sau 3 lần thử") from exc
+        time.sleep(0.35 * (2 ** attempt))
+    if body is None:
+        raise RuntimeError("LLM provider không trả về dữ liệu")
     if settings.provider == "anthropic":
         usage = body.get("usage", {})
         text = "".join(block.get("text", "") for block in body.get("content", []) if block.get("type") == "text")

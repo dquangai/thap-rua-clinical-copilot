@@ -45,10 +45,18 @@ class Settings:
             use_json_schema = "deepseek" not in base_url
         else:
             use_json_schema = use_json_schema_env == "true"
+        generic_api_key = os.getenv("LLM_API_KEY", "")
+        if provider == "openai":
+            # Prefer the standard OpenAI variable from the active shell/venv.
+            api_key = os.getenv("OPENAI_API_KEY", "") or generic_api_key
+        elif provider == "anthropic":
+            api_key = os.getenv("ANTHROPIC_API_KEY", "") or generic_api_key
+        else:
+            api_key = generic_api_key
         return cls(
             provider=provider,
             model=os.getenv("LLM_MODEL", "gpt-4.1-mini"),
-            api_key=os.getenv("LLM_API_KEY", ""),
+            api_key=api_key,
             base_url=base_url,
             use_json_schema=use_json_schema,
             batch_size=int(os.getenv("LLM_BATCH_SIZE", "10")),

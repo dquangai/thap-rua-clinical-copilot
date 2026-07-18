@@ -976,3 +976,301 @@ Observability:
   results/runs.jsonl
 ```
 
+## 31. Tích hợp AI checker vào giao diện web
+
+Ngoài CLI xử lý file, pipeline được expose qua endpoint:
+
+```http
+POST /api/v1/ai/check-record
+Content-Type: application/json
+
+{
+  "record": { "...": "minimum necessary clinical record" }
+}
+```
+
+Frontend gọi endpoint trong `frontend/src/lib/aiCheck.ts`. Hàm `buildCheckerRecord()` tạo một record riêng cho
+checker, không gửi nguyên đối tượng bệnh nhân đang hiển thị trên HIS.
+
+Luồng web:
+
+```text
+Bác sĩ nhấn Kiểm tra hồ sơ (AI)
+→ frontend lấy giá trị mới nhất từ form
+→ buildCheckerRecord() chỉ chọn trường lâm sàng cần thiết
+→ POST /api/v1/ai/check-record
+→ backend tiếp tục allowlist + residual PII scan
+→ lọc rule theo tam cá nguyệt
+→ gọi provider
+→ deterministic post-check
+→ trả kết luận + criteria catalog
+→ UI dựng bản bệnh án và remediation workspace
+```
+
+Hai lớp lọc dữ liệu được giữ độc lập:
+
+1. Frontend chỉ tạo payload minimum-necessary.
+2. Backend vẫn allowlist, redact và fail-closed nếu còn mẫu PII.
+
+Không được bỏ lớp bảo vệ backend chỉ vì frontend đã loại PII. Client không phải trust boundary.
+
+## 32. Giao diện scan hồ sơ
+
+Trong lúc chờ API, modal không chỉ hiển thị spinner. UI dựng một bản giấy A4 mô phỏng hồ sơ đang kiểm tra.
+
+### 32.1 Hiệu ứng scan
+
+- Một scan beam chạy liên tục theo chiều dọc trang giấy.
+- Chu kỳ hiện tại khoảng `1.35 giây/chiều`.
+- Beam dùng gradient, border và shadow; không can thiệp dữ liệu hoặc API.
+- Rule stream đổi khoảng `720 ms/lần`, hiển thị rule hiện tại rõ nhất và hai rule trước mờ dần.
+
+Rule stream chỉ là progress affordance để giải thích hệ thống đang làm gì. Nó không khẳng định provider đã hoàn tất
+rule đang hiển thị và không được dùng làm audit evidence.
+
+### 32.2 Che PII trên bản xem trước lúc scan
+
+Mặc dù payload thật đã bỏ PII, bản giấy local vẫn có dữ liệu thật để người dùng nhận ra hồ sơ. Điều này dễ tạo hiểu
+lầm rằng AI provider đang đọc PII. Vì vậy trạng thái scan che đen:
+
+- Họ tên bệnh nhân.
+- Mã y tế.
+- Địa chỉ.
+- Tên bác sĩ điều trị.
+
+Việc che này là UX privacy cue, không thay thế redaction ở backend. Sau khi có kết quả, bản xem nội bộ có thể hiển
+thị thông tin thật cho người dùng đã được phân quyền.
+
+## 33. Giao diện kết quả hai cột
+
+Kết quả dùng workspace hai cột:
+
+| Cột | Nội dung |
+|---|---|
+| Trái | Bản bệnh án dạng A4, vị trí cần sửa và editor |
+| Phải | Kết luận, danh sách rule không đạt, severity, lý do và gợi ý sửa |
+
+Mỗi lỗi bên phải dùng tên tiêu chí đầy đủ từ `criteria_catalog`. Mã như `R02.4` chỉ là mã tham chiếu, không phải mô
+tả chính dành cho bác sĩ.
+
+Hover một lỗi bên phải làm nổi bật đúng editor bên trái. Hover editor bên trái cũng làm nổi bật lỗi tương ứng. State
+liên kết dùng `item_id`, không dùng vị trí mảng, để vẫn đúng khi danh sách được sắp xếp hoặc thay đổi.
+
+## 34. Nguyên tắc highlight chính xác
+
+UI không được mặc định tô cả section lớn chỉ vì không biết rule thuộc dòng nào. Cách này tạo cảm giác nhiều nội dung
+đều sai và bác sĩ không biết phải sửa gì.
+
+Thứ tự ưu tiên:
+
+1. Highlight đúng structured field, ví dụ mạch hoặc chiều cao.
+2. Nếu dữ liệu đã có nhưng không đạt, tìm và highlight đúng dòng hiện hữu.
+3. Nếu dữ liệu hoàn toàn không tồn tại, đặt một remediation block nhỏ trong đúng section.
+4. Không tìm thấy anchor không đồng nghĩa với tô toàn bộ section.
+
+Ví dụ ánh xạ sinh hiệu:
+
+| Rule | Vùng sửa |
+|---|---|
+| `R02.1` | Mạch + huyết áp |
+| `R02.2` | Nhiệt độ |
+| `R02.3` | Nhịp thở |
+| `R02.4` | Chiều cao + cân nặng + BMI |
+| `R02.5` | Nội dung khám toàn thân |
+| `R02.6` | Nội dung khám bụng |
+
+`R02.2` và `R02.3` là rule có điều kiện. Nếu pipeline trả `KHONG_AP_DUNG`, trường trống không được hiển thị như một
+lỗi. Nếu trả `KHONG_DAT`, UI mới tạo editor tương ứng.
+
+## 35. Remediation registry
+
+Logic highlight và chỉnh sửa được tập trung thành registry thay vì viết `if/else` rải rác trong JSX.
+
+Mỗi entry có cấu trúc khái niệm:
+
+```ts
+type RemediationConfig = {
+  section: RemediationSection
+  field?: keyof AiDocumentNotes
+  mode: 'structured' | 'replace-line' | 'append'
+  keywords?: string[]
+  editLabel?: string
+}
+```
+
+Ý nghĩa:
+
+- `section`: vị trí trên bản giấy.
+- `field`: trường form nhận thay đổi.
+- `mode`: loại remediation.
+- `keywords`: anchor để định vị dòng hiện có.
+- `editLabel`: hướng dẫn ngắn hiển thị cho bác sĩ.
+
+Ví dụ:
+
+```ts
+'R06.2': {
+  section: 'plan',
+  field: 'treatmentPlan',
+  mode: 'replace-line',
+  keywords: ['SAT', 'ACID FOLIC', 'CANXI'],
+  editLabel: 'Điều chỉnh liều vi chất trực tiếp'
+}
+```
+
+Text được normalize Unicode, bỏ dấu và chuyển uppercase trước khi so khớp anchor. Nhờ đó `Sắt`, `SAT`, khác biệt
+hoa/thường hoặc dấu tiếng Việt vẫn định vị được cùng một dòng.
+
+### 35.1 Chế độ `structured`
+
+Dùng khi form có trường dữ liệu riêng. Editor dùng input theo đúng kiểu dữ liệu và cập nhật state của form.
+
+Ví dụ:
+
+- Mạch, huyết áp, nhịp thở, nhiệt độ.
+- Chiều cao và cân nặng.
+- BMI được tính lại từ chiều cao và cân nặng sau khi sửa.
+
+### 35.2 Chế độ `replace-line`
+
+Dùng khi dữ liệu đã tồn tại nhưng giá trị không tuân thủ. Renderer:
+
+1. Tách field thành các dòng.
+2. Normalize từng dòng.
+3. So khớp `keywords` trong registry.
+4. Highlight đúng dòng đầu tiên phù hợp cho rule.
+5. Biến dòng đó thành editor trực tiếp.
+6. Khi blur, thay đúng dòng trong field gốc và đồng bộ về form.
+
+Các trường hợp hiện được hỗ trợ gồm:
+
+- PARA và tiền sử sản khoa.
+- Tiền căn nội/ngoại khoa.
+- Dòng xét nghiệm.
+- Sàng lọc lệch bội.
+- Sàng lọc tiền sản giật.
+- Liều Sắt, Acid folic và Canxi.
+- Lịch hoặc ngày tái khám.
+
+### 35.3 Chế độ `append`
+
+Dùng khi hồ sơ hoàn toàn thiếu dữ liệu nên không có dòng gốc để highlight. UI tách rõ:
+
+- Dải vàng: nhắc nhở của AI, chỉ đọc.
+- Ô trắng viền xanh: `Nội dung bác sĩ bổ sung`.
+
+Khi bác sĩ nhập và blur, nội dung được nối vào trường đích. Nhiều remediation trong cùng một field được append tuần
+tự, không ghi đè lẫn nhau.
+
+### 35.4 Fallback an toàn
+
+Nếu rule `replace-line` không tìm được anchor, UI tự hạ xuống `append`. Điều này tránh mất editor và tránh highlight
+sai một vùng lớn.
+
+Rule chưa có entry riêng được ánh xạ theo prefix vào section hợp lý, ví dụ `R01.*` vào diễn biến/tiền sử và `R08.*`
+vào tư vấn. Đây chỉ là fallback UX; nên bổ sung registry cụ thể khi rule mới được đưa vào production.
+
+## 36. Gợi ý sửa theo từng lỗi
+
+Mỗi card lỗi có mục `Gợi ý sửa`. Nội dung lấy từ `editLabel` trong remediation registry. Nếu entry không có label,
+UI dùng hướng dẫn mặc định theo mode:
+
+- `append`: bổ sung thông tin tại ô được đánh dấu bên trái.
+- `replace-line`: cập nhật giá trị hiện tại tại dòng được đánh dấu.
+- `structured`: nhập giá trị vào field cấu trúc.
+
+Gợi ý sửa không được tự động thay đổi bệnh án. Bác sĩ vẫn là người nhập, kiểm tra và chịu trách nhiệm lưu dữ liệu.
+
+## 37. Đồng bộ editor về form
+
+Editor trên bản A4 không phải bản dữ liệu độc lập. Thay đổi được đồng bộ về form đang mở:
+
+- Clinical progress → textarea `Diễn biến bệnh`.
+- Treatment plan → textarea `Hướng xử trí`.
+- Diagnosis summary → textarea `Ghi chú chẩn đoán`.
+- Counseling record → textarea `Biên bản tư vấn`.
+- Vital signs → state của các trường sinh hiệu.
+
+Sau khi sửa, kết quả AI đang hiển thị vẫn là kết quả của lần chạy cũ. Bác sĩ cần chạy lại checker để xác nhận rule đã
+đạt. Không được tự đổi card sang `DAT` chỉ dựa trên việc người dùng đã nhập text.
+
+Một cải tiến tiếp theo phù hợp là nút `Kiểm tra lại thay đổi`, chỉ gửi lại các rule bị lỗi và các field vừa sửa.
+
+## 38. Khử trùng lặp chẩn đoán
+
+Chẩn đoán có thể xuất hiện đồng thời trong:
+
+- ICD bệnh chính + mô tả.
+- Ghi chú chẩn đoán.
+
+Trước khi hiển thị hoặc gửi AI, hệ thống normalize chữ, khoảng trắng và dấu gạch ngang. Nếu ghi chú bằng đúng mô tả
+ICD hoặc `ICD + mô tả`, nó không được in/gửi lần thứ hai. Ghi chú có nội dung bổ sung thực sự vẫn được giữ.
+
+## 39. Tăng tính nhất quán của kết quả
+
+LLM không bảo đảm tuyệt đối deterministic. Hệ thống hiện dùng hai lớp giảm dao động:
+
+### 39.1 Provider temperature
+
+OpenAI request đặt:
+
+```json
+{ "temperature": 0 }
+```
+
+Điều này giảm sampling variation nhưng không phải cam kết cùng output tuyệt đối.
+
+### 39.2 Deterministic checks
+
+Rule có thể xác định chắc chắn từ structured data nên được kiểm tra bằng code. `R02.4` hiện được override local:
+
+- Chiều cao phải là số lớn hơn 0.
+- Cân nặng phải là số lớn hơn 0.
+- BMI phải là số lớn hơn 0.
+
+Nếu thiếu một giá trị, kết quả cuối luôn có `R02.4 = KHONG_DAT` dù LLM trả `DAT`. Telemetry ghi
+`deterministic_criteria` để audit những rule đã bị lớp local áp dụng.
+
+Nên tiếp tục mở rộng deterministic checks cho các rule số học, required structured fields, ngày tháng và dose range.
+Không nên chuyển rule cần diễn giải ngữ cảnh lâm sàng sang code chỉ dựa trên keyword đơn giản.
+
+## 40. Retry và xử lý lỗi provider
+
+Provider adapter retry tối đa ba lần cho lỗi tạm thời:
+
+- Network interruption và connection reset.
+- Timeout.
+- HTTP `408`, `429`, `500`, `502`, `503`, `504`.
+
+Backoff hiện tại bắt đầu khoảng `350 ms` và tăng theo cấp số nhân. Các lỗi HTTP không tạm thời không retry.
+
+Nếu ba lần đều thất bại, adapter phát `RuntimeError` đã làm sạch. API route chuyển lỗi thành `502` có thông báo rõ,
+thay vì để exception mạng lọt ra thành `500`. Response body của provider không được đưa vào error message vì có thể
+chứa dữ liệu từ request.
+
+## 41. Checklist thêm rule editable mới
+
+Khi thêm rule mới:
+
+1. Xác định rule là structured, replace-line hay append.
+2. Xác định field thật trên form nhận thay đổi.
+3. Chọn section nhỏ nhất trên bản giấy.
+4. Với replace-line, chọn keyword ổn định sau khi bỏ dấu.
+5. Viết `editLabel` theo ngôn ngữ thao tác, không chỉ lặp lại tên rule.
+6. Kiểm tra rule không highlight cả section.
+7. Kiểm tra hover hai chiều bằng đúng `item_id`.
+8. Sửa dữ liệu và xác nhận form gốc nhận thay đổi.
+9. Chạy lại checker và xác nhận kết quả mới.
+10. Bổ sung deterministic check nếu rule hoàn toàn dựa trên structured data.
+
+## 42. Tệp liên quan đến tính năng web remediation
+
+| File | Trách nhiệm |
+|---|---|
+| `frontend/src/App.tsx` | Modal scan/result, paper renderer, remediation registry, editor và form synchronization |
+| `frontend/src/App.module.scss` | A4 layout, PII masking, scan beam, rule stream, highlight và editor styles |
+| `frontend/src/lib/aiCheck.ts` | Minimum-necessary payload, diagnosis deduplication và API call |
+| `frontend/src/types/aiCheck.ts` | Type của result, criteria catalog và telemetry trả về UI |
+| `backend/api/app/routers/ai.py` | Web endpoint, rule catalog và HTTP error mapping |
+| `backend/ai/clinical_checker/provider.py` | Temperature, retry, timeout và provider error sanitization |
+| `backend/ai/clinical_checker/pipeline.py` | LLM evaluation, deterministic override, validation và telemetry |
