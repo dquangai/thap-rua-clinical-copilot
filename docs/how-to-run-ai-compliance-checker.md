@@ -55,8 +55,11 @@ For OpenAI, configure:
 ```env
 LLM_PROVIDER=openai
 LLM_MODEL=gpt-4.1-mini
-LLM_API_KEY=replace_with_your_real_api_key
+OPENAI_API_KEY=replace_with_your_real_api_key
+# Optional generic fallback:
+LLM_API_KEY=replace_me
 LLM_BASE_URL=https://api.openai.com/v1
+LLM_USE_JSON_SCHEMA=true
 LLM_TIMEOUT_SECONDS=90
 LLM_MAX_OUTPUT_TOKENS=12000
 LLM_INPUT_PRICE_PER_MILLION_USD=0.40
@@ -437,7 +440,15 @@ Fix:
 open -a TextEdit .env
 ```
 
-Set `LLM_API_KEY` and run again.
+Set `OPENAI_API_KEY` and run again.
+
+For the OpenAI provider, `OPENAI_API_KEY` takes precedence over `LLM_API_KEY`. If your active shell or virtual
+environment already exports it, you do not need to duplicate the key in `.env`:
+
+```bash
+export OPENAI_API_KEY="your-key"
+npm run check:ai
+```
 
 ### HTTP 401 or 403
 
@@ -501,4 +512,3 @@ For architecture, privacy boundaries, response contracts, validation details, pi
 guidance, see:
 
 [AI Clinical Compliance Pipeline](ai-clinical-compliance-pipeline.md)
-

@@ -1,11 +1,25 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.ai_jobs import AiJobQueue, queue_settings
 from app.config import get_settings
 from app.routers import ai, auth, encounters, patients
 
 settings = get_settings()
-app = FastAPI(title="Thap Rua Clinical API", version="0.1.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    workers, max_queue = queue_settings()
+    app.state.ai_job_queue = AiJobQueue(ai.execute_check, workers=workers, max_queue=max_queue)
+    await app.state.ai_job_queue.start()
+    yield
+    await app.state.ai_job_queue.stop()
+
+
+app = FastAPI(title="Thap Rua Clinical API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[settings.frontend_origin],

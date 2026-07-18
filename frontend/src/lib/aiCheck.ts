@@ -14,11 +14,29 @@ export interface CheckerNotes {
   counselingRecord: string
 }
 
+const normalizeDiagnosisText = (value: string) => value
+  .toLocaleUpperCase('vi-VN')
+  .replace(/[–—-]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const isDuplicateDiagnosis = (note: string, code: string, description: string) => {
+  const normalizedNote = normalizeDiagnosisText(note)
+  const normalizedDescription = normalizeDiagnosisText(description)
+  const normalizedFull = normalizeDiagnosisText(`${code} ${description}`)
+  return normalizedNote === normalizedDescription || normalizedNote === normalizedFull
+}
+
 // Chỉ gửi minimum-necessary theo allowlist của backend/ai/clinical_checker/privacy.py:
 // không gửi tên, SĐT, địa chỉ, mã BN, BHYT.
 export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) {
   const vitalSigns = patient.vitalSigns
-  const descriptionParts = [patient.diagnoses.primaryDescription, notes.diagnosisSummary].filter(Boolean)
+  const diagnosisNote = isDuplicateDiagnosis(
+    notes.diagnosisSummary,
+    patient.diagnoses.primaryCode,
+    patient.diagnoses.primaryDescription,
+  ) ? '' : notes.diagnosisSummary
+  const descriptionParts = [patient.diagnoses.primaryDescription, diagnosisNote].filter(Boolean)
   let moTa = descriptionParts.join(' — ')
   if (!/\d\s*tu[ầa]n/i.test(moTa) && vitalSigns.pregnancyWeeks !== null) {
     moTa = `${moTa}${moTa ? ' — ' : ''}THAI ${vitalSigns.pregnancyWeeks} TUẦN`

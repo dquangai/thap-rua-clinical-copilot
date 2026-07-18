@@ -91,6 +91,71 @@ const queueFooterActions = [
   { label: 'Xóa bộ nhớ tạm', icon: Eraser, tone: 'danger' },
 ] as const
 
+const aiScanRuleLabels = [
+  'Kiểm tra tiền sử sản khoa và phụ khoa',
+  'Đối chiếu dấu hiệu bất thường thai kỳ',
+  'Kiểm tra mạch, huyết áp và nhịp thở',
+  'Đối chiếu chiều cao, cân nặng và BMI',
+  'Kiểm tra khám toàn thân và khám bụng',
+  'Đối chiếu xét nghiệm theo tuổi thai',
+  'Kiểm tra chẩn đoán và phân loại nguy cơ',
+  'Đối chiếu hướng xử trí và vi chất',
+  'Kiểm tra tư vấn và dấu hiệu cần khám ngay',
+  'Đối chiếu lịch hẹn tái khám thai',
+]
+
+const normalizedDiagnosis = (value: string) => value
+  .toLocaleUpperCase('vi-VN')
+  .replace(/[–—-]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim()
+
+const hasSupplementaryDiagnosis = (code: string, description: string, note: string) => {
+  const normalizedNote = normalizedDiagnosis(note)
+  return Boolean(normalizedNote)
+    && normalizedNote !== normalizedDiagnosis(description)
+    && normalizedNote !== normalizedDiagnosis(`${code} ${description}`)
+}
+
+type RemediationSection = 'history' | 'physical-exam' | 'investigations' | 'progress' | 'circulation' | 'temperature' | 'respiration' | 'anthropometrics' | 'diagnosis' | 'plan' | 'counseling'
+type RemediationMode = 'structured' | 'replace-line' | 'append'
+type RemediationConfig = {
+  section: RemediationSection
+  field?: keyof AiDocumentNotes
+  mode: RemediationMode
+  keywords?: string[]
+  editLabel?: string
+}
+
+const remediationRegistry: Record<string, RemediationConfig> = {
+  'R01.2': { section: 'history', field: 'clinicalProgress', mode: 'replace-line', keywords: ['PARA'], editLabel: 'Cập nhật tiền sử sản khoa' },
+  'R01.3': { section: 'history', field: 'clinicalProgress', mode: 'replace-line', keywords: ['TIEN CAN'], editLabel: 'Cập nhật tiền sử nội – ngoại khoa' },
+  'R02.1': { section: 'circulation', mode: 'structured', editLabel: 'Nhập mạch và huyết áp' },
+  'R02.2': { section: 'temperature', mode: 'structured', editLabel: 'Nhập nhiệt độ' },
+  'R02.3': { section: 'respiration', mode: 'structured', editLabel: 'Nhập nhịp thở' },
+  'R02.4': { section: 'anthropometrics', mode: 'structured', editLabel: 'Nhập chiều cao và cân nặng' },
+  'R03.4': { section: 'investigations', field: 'clinicalProgress', mode: 'replace-line', keywords: ['XET NGHIEM'], editLabel: 'Cập nhật kết quả công thức máu' },
+  'R03.10': { section: 'investigations', field: 'clinicalProgress', mode: 'replace-line', keywords: ['SANG LOC BE'], editLabel: 'Cập nhật sàng lọc lệch bội' },
+  'R03.11': { section: 'investigations', field: 'clinicalProgress', mode: 'replace-line', keywords: ['TSG'], editLabel: 'Cập nhật sàng lọc tiền sản giật' },
+  'R06.2': { section: 'plan', field: 'treatmentPlan', mode: 'replace-line', keywords: ['SAT', 'ACID FOLIC', 'CANXI'], editLabel: 'Điều chỉnh liều vi chất trực tiếp' },
+  'R06.7': { section: 'plan', field: 'treatmentPlan', mode: 'replace-line', keywords: ['TAI KHAM', 'HEN KHAM'], editLabel: 'Điều chỉnh lịch tái khám' },
+  R07: { section: 'plan', field: 'treatmentPlan', mode: 'replace-line', keywords: ['TAI KHAM', 'HEN KHAM'], editLabel: 'Điều chỉnh ngày hẹn theo tuổi thai' },
+}
+
+const plainClinicalText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+
+const defaultRemediation = (itemId: string): RemediationConfig => {
+  if (itemId.startsWith('R01')) return { section: 'history', field: 'clinicalProgress', mode: 'append' }
+  if (['R02.5', 'R02.6'].includes(itemId)) return { section: 'physical-exam', field: 'clinicalProgress', mode: 'append' }
+  if (itemId.startsWith('R03')) return { section: 'investigations', field: 'clinicalProgress', mode: 'append' }
+  if (itemId.startsWith('R04') || itemId.startsWith('R05')) return { section: 'progress', field: 'clinicalProgress', mode: 'append' }
+  if (itemId === 'R06.1') return { section: 'diagnosis', field: 'diagnosisSummary', mode: 'append' }
+  if (itemId.startsWith('R06') || itemId.startsWith('R08')) return { section: 'counseling', field: 'counselingRecord', mode: 'append' }
+  return { section: 'plan', field: 'treatmentPlan', mode: 'append' }
+}
+
+const remediationFor = (itemId: string) => remediationRegistry[itemId] ?? defaultRemediation(itemId)
+
 function Sidebar() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
   const logout = useAuthStore((state) => state.logout)
@@ -297,60 +362,267 @@ type AiCheckState = {
   data: AiCheckResponse | null
 }
 
-function AiCheckModal({ state, onClose }: { state: AiCheckState; onClose: () => void }) {
+type AiDocumentNotes = {
+  clinicalProgress: string
+  treatmentPlan: string
+  diagnosisSummary: string
+  counselingRecord: string
+}
+
+function AiCheckModal({ state, patient, notes, onEditNotes, onAppendNotes, onEditVitals, onClose }: {
+  state: AiCheckState
+  patient: PatientRecord
+  notes: AiDocumentNotes
+  onEditNotes: (field: keyof AiDocumentNotes, value: string) => void
+  onAppendNotes: (field: keyof AiDocumentNotes, value: string) => void
+  onEditVitals: (field: 'pulse' | 'respiratoryRate' | 'systolicBloodPressure' | 'diastolicBloodPressure' | 'temperature' | 'height' | 'weight', value: number | null) => void
+  onClose: () => void
+}) {
   const { loading, error, data } = state
   const result = data?.result
   const catalog = data?.criteria_catalog ?? {}
   const failures = result?.khong_dat ?? []
   const passed = result?.ket_luan === 'DAT'
   const criticalSet = new Set(result?.vi_pham_critical ?? [])
+  const [activeFailure, setActiveFailure] = useState<string | null>(null)
+  const [scanRuleIndex, setScanRuleIndex] = useState(0)
+  useEffect(() => {
+    if (!loading) return
+    const timer = window.setInterval(() => setScanRuleIndex((index) => (index + 1) % aiScanRuleLabels.length), 720)
+    return () => window.clearInterval(timer)
+  }, [loading])
+
+  const failureGroup = (itemId: string) => remediationFor(itemId).section
+  const groupFailures = (group: string) => failures.filter((failure) => failureGroup(failure.item_id) === group)
+  const lineProps = (group: string) => {
+    const related = groupFailures(group)
+    return related.length === 0 ? {} : {
+      className: `${styles.aiInlineFinding} ${activeFailure && related.some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`,
+      onMouseEnter: () => setActiveFailure(related[0].item_id),
+      onMouseLeave: () => setActiveFailure(null),
+    }
+  }
+  const editableProps = (group: string, field: keyof AiDocumentNotes) => groupFailures(group).length === 0 ? {} : {
+    ...lineProps(group),
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    role: 'textbox',
+    title: 'Nhấn để chỉnh sửa trực tiếp',
+    onBlur: (event: React.FocusEvent<HTMLElement>) => onEditNotes(field, event.currentTarget.textContent ?? ''),
+  }
+  const renderPreciseFindings = (groups: string[], field: keyof AiDocumentNotes, excludedIds: string[] = []) => groups
+    .flatMap((group) => groupFailures(group))
+    .filter((failure) => {
+      const config = remediationFor(failure.item_id)
+      return !excludedIds.includes(failure.item_id) && (config.mode === 'append'
+        || (config.mode === 'replace-line' && !matchedLineRuleIds(field).includes(failure.item_id)))
+    })
+    .map((failure) => (
+    <div
+      key={failure.item_id}
+      className={`${styles.aiFindingEditor} ${activeFailure === failure.item_id ? styles.aiFindingActive : ''}`}
+      onMouseEnter={() => setActiveFailure(failure.item_id)}
+      onMouseLeave={() => setActiveFailure(null)}
+    >
+      <div className={styles.aiFindingReminder}>
+        <TriangleAlert size={10} />
+        <span><b>{failure.item_id}</b> {failure.ly_do || catalog[failure.item_id] || 'Thiếu thông tin theo tiêu chí'}</span>
+      </div>
+      <label className={styles.aiFindingInput}>
+        <span>Nội dung bác sĩ bổ sung</span>
+        <textarea
+          rows={2}
+          placeholder="Nhập thông tin cần bổ sung vào hồ sơ…"
+          onFocus={() => setActiveFailure(failure.item_id)}
+          onBlur={(event) => {
+            const value = event.currentTarget.value.trim()
+            if (value) {
+              onAppendNotes(field, value)
+              event.currentTarget.value = ''
+              event.currentTarget.placeholder = 'Đã thêm vào hồ sơ'
+            }
+            setActiveFailure(null)
+          }}
+        />
+      </label>
+    </div>
+  ))
+  const matchedLineRuleIds = (field: keyof AiDocumentNotes) => failures.filter((failure) => {
+    const config = remediationFor(failure.item_id)
+    return config.mode === 'replace-line' && config.field === field && config.keywords?.some((keyword) =>
+      notes[field].split('\n').some((line) => plainClinicalText(line).includes(keyword)))
+  }).map((failure) => failure.item_id)
+  const renderEditableLines = (field: keyof AiDocumentNotes) => {
+    const lines = notes[field].split('\n')
+    const claimed = new Set<string>()
+    return lines.map((line, index) => {
+      const normalizedLine = plainClinicalText(line)
+      const failure = failures.find((candidate) => {
+        const config = remediationFor(candidate.item_id)
+        return !claimed.has(candidate.item_id) && config.mode === 'replace-line' && config.field === field
+          && config.keywords?.some((keyword) => normalizedLine.includes(keyword))
+      })
+      if (!failure) return <p key={`${index}-${line}`}>{line || 'Chưa ghi nhận thông tin.'}</p>
+      claimed.add(failure.item_id)
+      const config = remediationFor(failure.item_id)
+      return (
+        <div
+          key={`${index}-${failure.item_id}`}
+          className={`${styles.aiDirectCorrection} ${activeFailure === failure.item_id ? styles.aiFindingActive : ''}`}
+          onMouseEnter={() => setActiveFailure(failure.item_id)}
+          onMouseLeave={() => setActiveFailure(null)}
+        >
+          <span><TriangleAlert size={9} />{config.editLabel ?? 'Thông tin hiện tại chưa đạt — nhấn vào dòng dưới để sửa'}</span>
+          <p
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            onFocus={() => setActiveFailure(failure.item_id)}
+            onBlur={(event) => {
+              const updated = [...lines]
+              updated[index] = event.currentTarget.textContent?.trim() ?? ''
+              onEditNotes(field, updated.join('\n'))
+              setActiveFailure(null)
+            }}
+          >{line}</p>
+        </div>
+      )
+    })
+  }
+
+  const renderPaper = (scanning = false) => (
+    <div className={`${styles.aiPaper} ${scanning ? styles.aiPaperScanning : ''}`}>
+      {scanning && <div className={styles.aiScanBeam} aria-hidden="true" />}
+      <div className={styles.aiPaperBrand}><img src={thapRuaMark} alt="" /><div><strong>BỆNH VIỆN THÁP RÙA</strong><span>PHIẾU KHÁM BỆNH</span></div></div>
+      <div className={styles.aiPaperTitle}><strong>HỒ SƠ KHÁM BỆNH</strong><span>Ngày khám: {patient.visitDateTime}</span></div>
+      <div className={styles.aiPaperGrid}>
+        <p><span>Họ và tên</span><b className={scanning ? styles.aiPiiRedacted : ''}>{patient.fullName}</b></p>
+        <p><span>Năm sinh</span><b>{patient.birthYear}</b></p>
+        <p><span>Giới tính</span><b>{patient.gender}</b></p>
+        <p><span>Mã y tế</span><b className={scanning ? styles.aiPiiRedacted : ''}>{patient.medicalId}</b></p>
+        <p className={styles.aiPaperWide}><span>Địa chỉ</span><b className={scanning ? styles.aiPiiRedacted : ''}>{patient.address}</b></p>
+      </div>
+      <section className={styles.aiPaperSection}><h4>Lý do khám</h4><p>{patient.reason || 'Chưa ghi nhận'}</p></section>
+      <section className={styles.aiPaperSection}>
+        <h4>Diễn biến bệnh và khám thai</h4>
+        {renderEditableLines('clinicalProgress')}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['history', 'physical-exam', 'investigations', 'progress'], 'clinicalProgress')}</div>}
+      </section>
+      <section className={styles.aiPaperSection}>
+        <h4>Dấu hiệu sinh tồn và khám toàn thân</h4>
+        {!scanning && groupFailures('circulation').length > 0 ? (
+          <div {...lineProps('circulation')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure && groupFailures('circulation').some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`}>
+            <label>Mạch <input type="number" value={patient.vitalSigns.pulse ?? ''} onChange={(event) => onEditVitals('pulse', event.target.value ? Number(event.target.value) : null)} /> lần/phút</label>
+            <label>Huyết áp <input type="number" value={patient.vitalSigns.systolicBloodPressure ?? ''} onChange={(event) => onEditVitals('systolicBloodPressure', event.target.value ? Number(event.target.value) : null)} /> / <input type="number" value={patient.vitalSigns.diastolicBloodPressure ?? ''} onChange={(event) => onEditVitals('diastolicBloodPressure', event.target.value ? Number(event.target.value) : null)} /> mmHg</label>
+          </div>
+        ) : <p>Mạch: {patient.vitalSigns.pulse ?? '—'} lần/phút · Huyết áp: {patient.vitalSigns.systolicBloodPressure ?? '—'}/{patient.vitalSigns.diastolicBloodPressure ?? '—'} mmHg</p>}
+        {!scanning && groupFailures('respiration').length > 0 ? (
+          <div {...lineProps('respiration')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure === 'R02.3' ? styles.aiFindingActive : ''}`}><label>Nhịp thở <input type="number" value={patient.vitalSigns.respiratoryRate ?? ''} onChange={(event) => onEditVitals('respiratoryRate', event.target.value ? Number(event.target.value) : null)} /> lần/phút</label></div>
+        ) : <p>Nhịp thở: {patient.vitalSigns.respiratoryRate ?? '—'} lần/phút</p>}
+        {!scanning && groupFailures('temperature').length > 0 ? (
+          <div {...lineProps('temperature')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure === 'R02.2' ? styles.aiFindingActive : ''}`}><label>Nhiệt độ <input type="number" step="0.1" value={patient.vitalSigns.temperature ?? ''} onChange={(event) => onEditVitals('temperature', event.target.value ? Number(event.target.value) : null)} /> °C</label></div>
+        ) : patient.vitalSigns.temperature ? <p>Nhiệt độ: {patient.vitalSigns.temperature} °C</p> : null}
+        {!scanning && groupFailures('anthropometrics').length > 0 ? (
+          <div {...lineProps('anthropometrics')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure && groupFailures('anthropometrics').some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`}>
+            <label>Chiều cao <input type="number" value={patient.vitalSigns.height ?? ''} onChange={(event) => onEditVitals('height', event.target.value ? Number(event.target.value) : null)} /> cm</label>
+            <label>Cân nặng <input type="number" value={patient.vitalSigns.weight ?? ''} onChange={(event) => onEditVitals('weight', event.target.value ? Number(event.target.value) : null)} /> kg</label>
+            <span>BMI: {patient.vitalSigns.bmi ?? '—'}</span>
+          </div>
+        ) : <p>Chiều cao: {patient.vitalSigns.height ?? '—'} cm · Cân nặng: {patient.vitalSigns.weight ?? '—'} kg · BMI: {patient.vitalSigns.bmi ?? '—'}</p>}
+      </section>
+      <section className={styles.aiPaperSection}>
+        <h4>Chẩn đoán</h4>
+        <p><b>{patient.diagnoses.primaryCode}</b> — {patient.diagnoses.primaryDescription}</p>
+        {hasSupplementaryDiagnosis(patient.diagnoses.primaryCode, patient.diagnoses.primaryDescription, notes.diagnosisSummary) && (
+          <p {...(!scanning ? editableProps('diagnosis', 'diagnosisSummary') : {})}>{notes.diagnosisSummary}</p>
+        )}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['diagnosis'], 'diagnosisSummary')}</div>}
+      </section>
+      <section className={styles.aiPaperSection}>
+        <h4>Hướng xử trí</h4>
+        {renderEditableLines('treatmentPlan')}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['plan'], 'treatmentPlan')}</div>}
+      </section>
+      <section className={styles.aiPaperSection}><h4>Tư vấn và dặn dò</h4><p>{notes.counselingRecord || 'Chưa ghi nhận nội dung tư vấn.'}</p>{!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['counseling'], 'counselingRecord')}</div>}</section>
+      <div className={styles.aiPaperSign}><span>Bác sĩ điều trị</span><strong className={scanning ? styles.aiPiiRedacted : ''}>{patient.doctor}</strong></div>
+    </div>
+  )
 
   return (
     <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Kết quả kiểm tra hồ sơ bằng AI">
-      <div className={styles.aiModal}>
+      <div className={`${styles.aiModal} ${styles.aiModalWorkspace}`}>
         <header className={styles.aiModalHead}>
           <div><ShieldCheck size={17} /><h2>Kiểm tra tuân thủ hồ sơ (AI)</h2></div>
           <button type="button" onClick={onClose} aria-label="Đóng kết quả kiểm tra"><X size={16} /></button>
         </header>
         <div className={styles.aiModalBody}>
           {loading && (
-            <div className={styles.aiLoading}>
-              <LoaderCircle size={22} className={styles.aiSpinner} />
-              <p>Đang gửi hồ sơ (đã ẩn thông tin định danh) đến AI để kiểm tra...</p>
+            <div className={styles.aiScanningLayout}>
+              <div className={styles.aiPaperViewport}>{renderPaper(true)}</div>
+              <div className={styles.aiScanStatus}>
+                <div className={styles.aiScanPulse}><ShieldCheck size={22} /></div>
+                <strong>AI đang đối chiếu hồ sơ</strong>
+                <p>Đang rà soát nội dung bệnh án theo bộ tiêu chí áp dụng…</p>
+                <div className={styles.aiScanSteps}>
+                  <span className={styles.isDone}>Ẩn danh dữ liệu</span>
+                  <span className={styles.isActive}>Đối chiếu quy tắc</span>
+                  <div className={styles.aiRuleStream} aria-live="polite">
+                    {[2, 1, 0].map((offset) => {
+                      const index = (scanRuleIndex - offset + aiScanRuleLabels.length) % aiScanRuleLabels.length
+                      return <small key={`${scanRuleIndex}-${offset}`} className={offset === 0 ? styles.aiRuleCurrent : ''}>
+                        <ShieldCheck size={10} />{aiScanRuleLabels[index]}
+                      </small>
+                    })}
+                  </div>
+                  <span>Tổng hợp kết quả</span>
+                </div>
+              </div>
             </div>
           )}
           {!loading && error && (
             <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>
           )}
           {!loading && result && (
-            <>
-              <div className={`${styles.aiVerdict} ${passed ? styles.aiVerdictPass : styles.aiVerdictFail}`}>
-                {passed ? <CircleCheck size={24} /> : <TriangleAlert size={24} />}
-                <strong>{passed ? 'ĐẠT' : 'KHÔNG ĐẠT'}</strong>
-              </div>
-              {failures.length > 0 && (
-                <ul className={styles.aiExceptionList}>
+            <div className={styles.aiResultLayout}>
+              <div className={styles.aiPaperViewport}>{renderPaper(false)}</div>
+              <aside className={styles.aiResultPanel}>
+                <div className={`${styles.aiVerdict} ${passed ? styles.aiVerdictPass : styles.aiVerdictFail}`}>
+                  {passed ? <CircleCheck size={22} /> : <TriangleAlert size={22} />}
+                  <div><strong>{passed ? 'HỒ SƠ ĐẠT' : 'HỒ SƠ CHƯA ĐẠT'}</strong><span>{passed ? 'Không phát hiện tiêu chí vi phạm' : `${failures.length} tiêu chí cần bổ sung`}</span></div>
+                </div>
+                {failures.length > 0 && <ul className={styles.aiExceptionList}>
                   {failures.map((failure) => (
-                    <li key={failure.item_id}>
+                    <li
+                      key={failure.item_id}
+                      className={activeFailure && failureGroup(activeFailure) === failureGroup(failure.item_id) ? styles.aiExceptionActive : ''}
+                      onMouseEnter={() => setActiveFailure(failure.item_id)}
+                      onMouseLeave={() => setActiveFailure(null)}
+                    >
                       <div className={styles.aiExceptionHead}>
-                        <strong>{failure.item_id}</strong>
+                        <span className={styles.aiRuleCode}>{failure.item_id}</span>
                         {criticalSet.has(failure.item_id) && (
                           <span className={`${styles.aiBadge} ${styles.aiBadgeFail}`}>Nghiêm trọng</span>
                         )}
                       </div>
-                      {catalog[failure.item_id] && <p className={styles.aiCriterion}>{catalog[failure.item_id]}</p>}
+                      <strong className={styles.aiCriterion}>{catalog[failure.item_id] || 'Tiêu chí chưa có tên trong danh mục'}</strong>
                       {failure.ly_do && <p className={styles.aiNote}>{failure.ly_do}</p>}
+                      <p className={styles.aiFixHint}>
+                        <span>Gợi ý sửa</span>
+                        {remediationFor(failure.item_id).editLabel ?? (remediationFor(failure.item_id).mode === 'append'
+                          ? 'Bổ sung thông tin vào vùng nhập liệu được đánh dấu bên trái'
+                          : 'Cập nhật giá trị tại vùng được đánh dấu bên trái')}
+                      </p>
                     </li>
                   ))}
-                </ul>
-              )}
+                </ul>}
               {result.khuyen_nghi && (
                 <div className={styles.aiRecommendation}>
                   <strong>Khuyến nghị</strong>
                   <p>{result.khuyen_nghi}</p>
                 </div>
               )}
-            </>
+              </aside>
+            </div>
           )}
         </div>
         <footer className={styles.aiDisclaimer}>
@@ -459,7 +731,28 @@ function CounselingModal({
 
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
-  const vitalSigns = patient.vitalSigns
+  const [vitalEdits, setVitalEdits] = useState({
+    pulse: patient.vitalSigns.pulse,
+    respiratoryRate: patient.vitalSigns.respiratoryRate,
+    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
+    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
+    temperature: patient.vitalSigns.temperature,
+    height: patient.vitalSigns.height,
+    weight: patient.vitalSigns.weight,
+    bmi: patient.vitalSigns.bmi,
+  })
+  useEffect(() => setVitalEdits({
+    pulse: patient.vitalSigns.pulse,
+    respiratoryRate: patient.vitalSigns.respiratoryRate,
+    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
+    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
+    temperature: patient.vitalSigns.temperature,
+    height: patient.vitalSigns.height,
+    weight: patient.vitalSigns.weight,
+    bmi: patient.vitalSigns.bmi,
+  }), [patient.medicalId, patient.vitalSigns.height, patient.vitalSigns.weight, patient.vitalSigns.bmi])
+  const vitalSigns = { ...patient.vitalSigns, ...vitalEdits }
+  const editablePatient = { ...patient, vitalSigns }
   const progressRef = useRef<HTMLTextAreaElement>(null)
   const planRef = useRef<HTMLTextAreaElement>(null)
   const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
@@ -504,7 +797,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const runAiCheck = async () => {
     setAiCheck({ open: true, loading: true, error: '', data: null })
     try {
-      const record = buildCheckerRecord(patient, {
+      const record = buildCheckerRecord(editablePatient, {
         clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
         treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
         diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
@@ -699,7 +992,40 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
         <button type="button" className={styles.saveButton} onClick={() => notify('Đã lưu hồ sơ khám')}><Save size={16} />Lưu</button>
         <button type="button" className={styles.cancelButton} onClick={() => notify('Đã hủy thay đổi')}><X size={16} />Hủy</button>
       </footer>
-      {aiCheck.open && <AiCheckModal state={aiCheck} onClose={() => setAiCheck((state) => ({ ...state, open: false }))} />}
+      {aiCheck.open && <AiCheckModal
+        state={aiCheck}
+        patient={editablePatient}
+        notes={{
+          clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+          treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+          diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+          counselingRecord: counselingText,
+        }}
+        onEditNotes={(field, value) => {
+          // Biên bản tư vấn quản lý bằng state (modal + AI generate), các ô còn lại là textarea uncontrolled.
+          if (field === 'counselingRecord') {
+            setCounselingText(value)
+            return
+          }
+          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
+          if (refs[field].current) refs[field].current.value = value
+        }}
+        onAppendNotes={(field, value) => {
+          if (field === 'counselingRecord') {
+            setCounselingText((current) => `${current}${current ? '\n' : ''}${value}`)
+            return
+          }
+          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
+          const target = refs[field].current
+          if (target) target.value = `${target.value}${target.value ? '\n' : ''}${value}`
+        }}
+        onEditVitals={(field, value) => setVitalEdits((current) => {
+          const next = { ...current, [field]: value }
+          const bmi = next.height && next.weight ? Number((next.weight / ((next.height / 100) ** 2)).toFixed(1)) : null
+          return { ...next, bmi }
+        })}
+        onClose={() => setAiCheck((state) => ({ ...state, open: false }))}
+      />}
     </section>
   )
 }
@@ -771,15 +1097,3 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
   return children
 }
-
-
-
-
-
-
-
-
-
-
-
-
