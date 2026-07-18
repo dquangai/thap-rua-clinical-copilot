@@ -33,3 +33,15 @@ Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-t
 ```bash
 python -m pytest
 ```
+
+## OpenAI cho agent đối chiếu xét nghiệm
+
+Tạo file `backend/api/.env` từ `.env.example`, sau đó điền key vào **backend**:
+
+```env
+OPENAI_API_KEY=sk-proj_xxxxxxxxxxxxxxxxx
+OPENAI_MODEL=gpt-5.6-sol
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+Không thêm `OPENAI_API_KEY` hoặc biến bắt đầu bằng `VITE_` vào `frontend/.env`: mọi biến `VITE_*` được đóng gói vào trình duyệt và có thể bị xem bởi người dùng. Endpoint `POST /api/v1/lab-analysis/narrative` chỉ nhận danh sách đã loại định danh gồm tên xét nghiệm, kết quả, đơn vị, khoảng tham chiếu, trạng thái và độ chênh. Phép so sánh số học vẫn chạy cục bộ; OpenAI chỉ biên tập câu chữ của bản nháp.

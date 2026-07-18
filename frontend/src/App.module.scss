@@ -1050,7 +1050,7 @@
 
 .treatmentFields {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -1660,4 +1660,1008 @@
   color: var(--brand-navy);
   background: var(--patient-handle-bg);
   box-shadow: 2px 1px 5px rgba(19, 77, 139, .1);
+}
+.technicalWorkspace {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  overflow: hidden;
+  background: #f4f4f4;
+  color: #263a42;
+}
+
+.technicalPageTitle {
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 10px;
+  border-radius: 6px;
+  background: #54b394;
+  color: #fff;
+  box-shadow: inset 0 -1px rgba(0, 0, 0, .08);
+
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+  }
+}
+
+.technicalSearch {
+  width: min(280px, 34vw);
+  height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, .45);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, .18);
+  color: rgba(255, 255, 255, .9);
+
+  input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #fff;
+    font-size: 11px;
+
+    &::placeholder { color: rgba(255, 255, 255, .82); }
+  }
+}
+
+.technicalTableWrap {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  border: 1px solid #8ccdbd;
+  background: #fff;
+  scrollbar-color: #42a58e #edf4f1;
+  scrollbar-width: thin;
+}
+
+.technicalTable {
+  width: 100%;
+  min-width: 1050px;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+
+  th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    height: 25px;
+    padding: 0 5px;
+    border-right: 1px solid rgba(255, 255, 255, .42);
+    border-bottom: 1px solid #2d9c83;
+    background: #54b394;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+
+  td {
+    height: 33px;
+    padding: 2px 4px;
+    border-right: 1px solid #b4ddd2;
+    border-bottom: 1px solid #b4ddd2;
+    background: #fbfbfb;
+    color: #25363c;
+    vertical-align: middle;
+
+    &:first-child { border-left: 0; }
+  }
+
+  tbody tr:nth-child(even) td { background: #eef8f4; }
+  tbody tr:hover td { background: #e1f2ec; }
+
+  input,
+  select {
+    width: 100%;
+    height: 28px;
+    min-width: 0;
+    padding: 0 6px;
+    border: 1px solid #c7d3d5;
+    border-radius: 4px;
+    outline: 0;
+    background: #f4f4f4;
+    color: #314149;
+    font-size: 12px;
+
+    &:focus {
+      border-color: #299a82;
+      background: #fff;
+      box-shadow: 0 0 0 2px rgba(41, 154, 130, .13);
+    }
+  }
+
+  select {
+    padding-right: 2px;
+    text-overflow: ellipsis;
+  }
+}
+
+.colIndex { width: 31px; }
+.colTim { width: 102px; }
+.colName { width: 30%; }
+.colDepartment { width: 17%; }
+.colNote { width: 13%; }
+.colQuantity { width: 43px; }
+.colPrice { width: 82px; }
+.colTotal { width: 87px; }
+.colCoverage { width: 43px; }
+.colObject { width: 68px; }
+.colAction { width: 39px; }
+
+.indexCell {
+  color: #315e66 !important;
+  text-align: center;
+}
+
+.serviceNameCell {
+  padding-left: 6px !important;
+  overflow: hidden;
+  font-weight: 500;
+  line-height: 1.18;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moneyCell {
+  padding-right: 8px !important;
+  color: #263f4d !important;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.numberInput { text-align: center; }
+
+.technicalRowSelected td {
+  background: #d8eee6 !important;
+  box-shadow: inset 0 1px #73bea9, inset 0 -1px #73bea9;
+}
+
+.technicalRowSelected .serviceNameCell {
+  color: #174f50;
+  font-weight: 700;
+}
+
+.actionCell {
+  padding: 0 !important;
+  text-align: center;
+
+  button {
+    width: 100%;
+    height: 31px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    background: transparent;
+    color: #de4844;
+
+    &:hover { color: #b82e2b; transform: scale(1.08); }
+  }
+}
+
+.noTechnicalResults {
+  height: 110px !important;
+  color: #70838a !important;
+  text-align: center;
+}
+
+.technicalActionBar {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 0 0;
+}
+
+.templateField {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 246px;
+  color: #35454a;
+  font-size: 12px;
+  font-weight: 600;
+
+  select {
+    flex: 1;
+    height: 30px;
+    padding: 0 8px;
+    border: 1px solid #c7d2d4;
+    border-radius: 5px;
+    background: #fff;
+    color: #4e5b60;
+    outline: 0;
+  }
+}
+
+.technicalActions {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  flex: 1;
+}
+
+.technicalActions button {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(35, 77, 70, .12);
+  transition: filter .15s ease, transform .15s ease;
+
+  &:hover { filter: brightness(.94); transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+.technicalButtonSave { background: #53b797; }
+.technicalButtonEdit { background: #4d98c5; }
+.technicalButtonCancel { background: #ee8335; }
+.technicalButtonPrint { background: #4b96be; }
+.technicalButtonDelete { background: #dd514c; }
+
+.technicalEditHint {
+  align-self: flex-end;
+  margin-top: -6px;
+  color: #839295;
+  font-size: 10px;
+  font-style: italic;
+}
+
+@media (max-width: 1420px) {
+  .technicalPageTitle { min-height: 28px; }
+  .technicalActions button { padding-inline: 8px; font-size: 10px; }
+  .technicalActionBar { gap: 8px; }
+  .templateField { flex-basis: 220px; }
+}
+/* DVKT follows the application's navy / blue / red visual system. */
+.technicalPageTitle {
+  background: linear-gradient(100deg, var(--brand-navy), var(--brand-blue));
+  box-shadow: inset 4px 0 var(--brand-red), inset 0 -1px rgba(0, 0, 0, .12);
+}
+
+.technicalSearch {
+  border-color: rgba(255, 255, 255, .5);
+  background: rgba(255, 255, 255, .12);
+}
+
+.technicalTableWrap {
+  border-color: #cad8e7;
+  scrollbar-color: var(--brand-blue) #eef3f8;
+}
+
+.technicalTable {
+  th {
+    border-right-color: rgba(255, 255, 255, .25);
+    border-bottom-color: var(--brand-blue);
+    background: var(--brand-navy);
+  }
+
+  td { border-color: #cad8e7; }
+  tbody tr:nth-child(even) td { background: #eef3f8; }
+  tbody tr:hover td { background: #e7eef7; }
+
+  input,
+  select {
+    border-color: #cad8e7;
+    background: #f4f4f4;
+
+    &:focus {
+      border-color: var(--brand-blue);
+      box-shadow: 0 0 0 2px rgba(19, 77, 139, .13);
+    }
+  }
+}
+
+.technicalRowSelected td {
+  background: #eaf0f7 !important;
+  box-shadow: inset 4px 0 var(--brand-red), inset 0 1px #b8cce3, inset 0 -1px #b8cce3;
+}
+
+.technicalRowSelected .serviceNameCell { color: var(--brand-navy); }
+
+.technicalButtonSave { background: var(--brand-navy); }
+.technicalButtonEdit,
+.technicalButtonPrint { background: #4d98c5; }
+.technicalButtonCancel,
+.technicalButtonDelete { background: var(--brand-red); }
+
+.actionCell button {
+  color: var(--brand-red);
+  &:hover { color: #a51c21; }
+}
+
+.templateField select {
+  border-color: #cad8e7;
+  color: var(--brand-navy);
+}
+.technicalActions {
+  justify-content: flex-start;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.technicalActions button { flex: 0 0 auto; }
+.technicalButtonLabReport { background: var(--brand-navy); }
+.labReportFooter .technicalButtonPrint {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 16px;
+  background: #4d98c5;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(19, 77, 139, .18);
+  transition: filter .15s ease, transform .15s ease;
+
+  &:hover { filter: brightness(.94); transform: translateY(-1px); }
+  &:active { transform: translateY(0); }
+}
+
+.labReportBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 31, 52, .54);
+}
+
+.labReportModal {
+  width: min(1040px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #cad8e7;
+  border-radius: 10px;
+  background: #fff;
+  color: #263b43;
+  box-shadow: 0 24px 60px rgba(10, 32, 60, .28);
+}
+
+.labReportModalHeader {
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 8px 16px;
+  background: linear-gradient(100deg, var(--brand-navy), var(--brand-blue));
+  color: #fff;
+
+  > div {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  > div > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  strong { font-size: 15px; }
+  small { color: rgba(255, 255, 255, .78); font-size: 10px; letter-spacing: .03em; }
+}
+
+.labReportClose {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 7px;
+  background: transparent;
+  color: #fff;
+
+  &:hover { background: rgba(255, 255, 255, .14); }
+}
+
+.labReportContent {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px 22px 16px;
+  background: #fff;
+}
+
+.labReportPatient {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 22px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #cad8e7;
+
+  div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  span { color: #71828d; font-size: 10px; }
+  strong { overflow: hidden; color: var(--brand-navy); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+.labReportGroup {
+  margin-top: 15px;
+  border: 1px solid #cad8e7;
+  border-radius: 6px;
+  overflow: hidden;
+
+  h3 {
+    margin: 0;
+    padding: 7px 10px;
+    background: #eef3f8;
+    color: var(--brand-navy);
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  h4 {
+    margin: 0;
+    padding: 7px 10px;
+    border-top: 1px solid #cad8e7;
+    border-bottom: 1px solid #cad8e7;
+    color: #415867;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+  th { background: var(--brand-navy); color: #fff; font-size: 10px; font-weight: 700; text-align: left; }
+  th, td { padding: 6px 8px; border-right: 1px solid #d6e1ed; border-bottom: 1px solid #d6e1ed; }
+  th:nth-child(1), td:nth-child(1) { width: 47%; }
+  th:nth-child(2), td:nth-child(2) { width: 16%; }
+  th:nth-child(3), td:nth-child(3) { width: 15%; }
+  tr:nth-child(even) td { background: #f7f9fc; }
+  td:last-child, th:last-child { border-right: 0; }
+}
+
+.labResult { color: var(--brand-navy); font-weight: 800; }
+
+.labReportNote {
+  margin: 15px 0 0;
+  color: #60747e;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.labReportSignature {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 13px;
+  color: #657883;
+  font-size: 10px;
+
+  strong { color: var(--brand-navy); }
+}
+
+.labReportFooter {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 16px;
+  border-top: 1px solid #cad8e7;
+  background: #f4f4f4;
+  color: #6d7f88;
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .labReportPatient { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .labReportContent { padding-inline: 12px; }
+  .labReportSignature { flex-direction: column; gap: 5px; }
+}
+.labReportContent {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  background: #eef3f8;
+}
+
+.labReportContent iframe {
+  width: 100%;
+  height: 100%;
+  min-height: calc(100vh - 160px);
+  display: block;
+  border: 0;
+  background: #fff;
+}
+/* Automated lab-result scanner. The scan beam is constrained to the result table. */
+.labReportModal {
+  width: min(1440px, calc(100vw - 32px));
+  height: calc(100vh - 32px);
+  max-height: none;
+}
+
+.labAgentLayout {
+  min-height: 0;
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(360px, .75fr);
+  overflow: hidden;
+  background: #eef3f8;
+}
+
+.labDocumentPane {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #cad8e7;
+}
+
+.labPrivacyNotice {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  border-bottom: 1px solid #cad8e7;
+  background: #e8f5ef;
+  color: #315d4e;
+  font-size: 10px;
+  line-height: 1.35;
+
+  svg { flex: 0 0 auto; color: #268262; }
+  strong { margin-right: 4px; color: #1d694f; }
+}
+
+.labPagesViewport {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 18px;
+  scroll-behavior: smooth;
+  scrollbar-color: var(--brand-blue) #dfe7ef;
+  scrollbar-width: thin;
+}
+
+.labReportPage {
+  position: relative;
+  width: min(760px, 100%);
+  margin: 0 auto 18px;
+  overflow: hidden;
+  border: 1px solid #c7d5e3;
+  border-radius: 4px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(19, 52, 87, .12);
+  transition: border-color .2s ease, box-shadow .2s ease;
+
+  img { width: 100%; height: auto; display: block; }
+}
+
+.labReportPageScanning {
+  border-color: #268fce;
+  box-shadow: 0 0 0 3px rgba(38, 143, 206, .13), 0 10px 28px rgba(19, 52, 87, .16);
+}
+
+.labReportPageReferenced {
+  border-color: #d2a40d;
+  box-shadow: 0 0 0 3px rgba(242, 190, 25, .2), 0 10px 28px rgba(19, 52, 87, .16);
+}
+
+.labRowHighlight {
+  position: absolute;
+  right: 4.7%;
+  left: 8.5%;
+  z-index: 3;
+  box-sizing: border-box;
+  border: 1px solid rgba(224, 165, 0, .9);
+  border-radius: 3px;
+  background: rgba(255, 220, 46, .38);
+  box-shadow: 0 0 0 2px rgba(255, 240, 156, .38), 0 0 16px rgba(224, 165, 0, .32);
+  pointer-events: none;
+  animation: labReferencePulse .75s ease-out 2;
+}
+
+@keyframes labReferencePulse {
+  0% { opacity: .25; transform: scaleY(.75); }
+  100% { opacity: 1; transform: scaleY(1); }
+}
+.labScanBounds {
+  position: absolute;
+  top: 26.3%;
+  right: 2.5%;
+  bottom: 18.4%;
+  left: 2.5%;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.labScanBoundsActive {
+  border: 1px solid rgba(43, 163, 221, .38);
+  background: linear-gradient(180deg, rgba(33, 150, 214, .035), rgba(33, 150, 214, .085));
+}
+
+.labScanLine {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #40d9ff 8%, #fff 50%, #40d9ff 92%, transparent);
+  box-shadow: 0 0 8px #34c7f1, 0 0 22px rgba(31, 164, 216, .75);
+  animation: labScanSweep 1.05s linear infinite;
+}
+
+@keyframes labScanSweep {
+  from { top: 0; }
+  to { top: calc(100% - 3px); }
+}
+
+.labPageBadge {
+  position: absolute;
+  right: 9px;
+  bottom: 8px;
+  padding: 3px 7px;
+  border-radius: 10px;
+  background: rgba(19, 77, 139, .88);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.labAgentPanel {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  overflow: auto;
+  background: #fff;
+}
+
+.labAgentHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+
+  > div { min-width: 0; display: flex; align-items: center; gap: 8px; }
+  .labAgentBrandMark {
+    width: 25px;
+    height: 27px;
+    flex: 0 0 auto;
+    object-fit: contain;
+  }
+  > div > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  strong { color: var(--brand-navy); font-size: 12px; }
+  small { color: #74858f; font-size: 9px; line-height: 1.35; }
+}
+
+.labAgentStatus {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 11px;
+  background: #edf1f5;
+  color: #6b7b84;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.labAgentStatusActive {
+  background: #e4f3fb;
+  color: #1678ad;
+  animation: labStatusPulse 1s ease-in-out infinite alternate;
+}
+
+.labAgentStatusComplete { background: #e7f5ed; color: #207d58; }
+
+@keyframes labStatusPulse {
+  from { opacity: .68; }
+  to { opacity: 1; }
+}
+
+.labProgressTrack {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #e7edf3;
+
+  span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--brand-navy), #38b7da);
+    transition: width .3s ease;
+  }
+}
+
+.labAgentEmpty {
+  min-height: 280px;
+  flex: 1;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  padding: 28px;
+  border: 1px dashed #c4d2e0;
+  border-radius: 8px;
+  background: #f7f9fc;
+  color: #81909a;
+  text-align: center;
+
+  svg { color: #4b96be; }
+  strong { color: var(--brand-navy); font-size: 12px; }
+  p { max-width: 300px; margin: 0; font-size: 10px; line-height: 1.5; }
+}
+
+.labResultCounters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+
+  span {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    border: 1px solid;
+    border-radius: 7px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  b { font-size: 14px; }
+}
+
+.labCountNormal { border-color: #b8dfcc !important; background: #edf8f2; color: #287457; }
+.labCountHigh { border-color: #f0c5c4 !important; background: #fff0ef; color: #b33a3a; }
+.labCountLow { border-color: #c5d9ed !important; background: #eef5fc; color: #356f9d; }
+
+.labReferenceList {
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid #d5e0ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.labReferenceHeader {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border-bottom: 1px solid #e1e8ef;
+  background: #f7f9fc;
+
+  > div:first-child { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  strong { color: #294b5d; font-size: 10px; }
+  small { color: #7a8c96; font-size: 8.5px; }
+}
+
+.labReferenceCounts {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 7px;
+    border: 1px solid;
+    border-radius: 11px;
+    font-size: 8.5px;
+    font-weight: 700;
+  }
+
+  b { font-size: 10px; }
+}
+
+.labReferenceRows {
+  display: flex;
+  flex-direction: column;
+
+  article {
+    min-width: 0;
+    min-height: 39px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px 5px 10px;
+    border-bottom: 1px solid #e8edf2;
+    background: #fff;
+    transition: background .18s ease, box-shadow .18s ease;
+  }
+
+  article:last-child { border-bottom: 0; }
+
+  article > span {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  b {
+    overflow: hidden;
+    color: #294b5d;
+    font-size: 9.5px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small { color: #7a8c96; font-size: 8.5px; }
+
+  button {
+    min-height: 25px;
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+    border: 1px solid #d3b143;
+    border-radius: 13px;
+    background: #fffaf0;
+    color: #765b0c;
+    font-size: 8.5px;
+    font-weight: 800;
+
+    &:hover { border-color: #ae8407; background: #fff1b8; }
+  }
+}
+
+.labReferenceItemActive {
+  background: #fff8d7 !important;
+  box-shadow: inset 3px 0 #d2a40d;
+}
+.labNarrativeField {
+  min-height: 225px;
+  flex: 1 1 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.labNarrativeHeader {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  > span { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  strong { color: #425e6c; font-size: 10px; }
+  small { color: #82919a; font-size: 8.5px; }
+}
+
+.labNarrativeField textarea {
+  width: 100%;
+  min-height: 180px;
+  flex: 1;
+  resize: vertical;
+  padding: 10px 11px;
+  border: 1px solid #cad8e7;
+  border-radius: 7px;
+  outline: 0;
+  background: #fbfcfe;
+  color: #263b43;
+  font-size: 10px;
+  line-height: 1.55;
+
+  &:focus {
+    border-color: var(--brand-blue);
+    box-shadow: 0 0 0 3px rgba(19, 77, 139, .1);
+  }
+}
+.labClinicalWarning {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid #d68a32;
+  background: #fff7ea;
+  color: #7b5b32;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.labReportFooter .technicalButtonPrint:disabled {
+  opacity: .62;
+  cursor: wait;
+  transform: none;
+}
+
+@media (max-width: 1050px) {
+  .labAgentLayout { grid-template-columns: 1fr; overflow: auto; }
+  .labDocumentPane { min-height: 62vh; border-right: 0; border-bottom: 1px solid #cad8e7; }
+  .labAgentPanel { min-height: 520px; }
+}
+.labPrintModal {
+  width: min(1180px, calc(100vw - 32px));
+}
+
+.labPrintViewer {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background: #dfe6ed;
+
+  iframe {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: 0;
+    background: #fff;
+  }
+}
+.labPrintState {
+  height: 100%;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 9px;
+  padding: 28px;
+  color: #6c7f89;
+  text-align: center;
+
+  svg { color: var(--brand-blue); }
+  strong { color: var(--brand-navy); font-size: 13px; }
+  p { max-width: 430px; margin: 0; font-size: 10px; line-height: 1.5; }
+
+  button {
+    min-height: 30px;
+    padding: 0 14px;
+    border: 1px solid var(--brand-blue);
+    border-radius: 16px;
+    background: #fff;
+    color: var(--brand-navy);
+    font-size: 10px;
+    font-weight: 800;
+
+    &:hover { background: #eef5fb; }
+  }
+}
+
+.labPrintSpinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #d5e4ef;
+  border-top-color: var(--brand-blue);
+  border-radius: 50%;
+  animation: labPrintSpin .75s linear infinite;
+}
+
+@keyframes labPrintSpin {
+  to { transform: rotate(360deg); }
 }
