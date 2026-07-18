@@ -61,6 +61,10 @@ Tài khoản demo đầy đủ (nếu muốn đăng nhập từng vai):
 3. Sửa trực tiếp nội dung trong ô nhập → bấm **"In / Xuất PDF"** → ra đơn A4 chuẩn (chọn Save as PDF trong hộp thoại in).
 4. Bấm **"Lưu và đóng"** → card hiện nội dung, có nút **"Mở biên bản"** / **"Xóa"**. Nội dung này chính là dữ liệu chấm nhóm tiêu chí R08 khi chạy AI check.
 
+![Modal Biên bản tư vấn: văn bản hành chính đúng thể thức (quốc hiệu, thông tin bệnh nhân, chẩn đoán, khu ký hai bên) trong lúc AI đang soạn nội dung từ hồ sơ đã ẩn danh; header có nút Tạo lại (AI) và In / Xuất PDF](docs/images/counseling-record-modal.png)
+
+*Biên bản mở đúng dạng văn bản hành chính ngay trong app — quốc hiệu, thông tin bệnh nhân, chẩn đoán, ngày tháng và khu ký "BÁC SĨ TƯ VẤN" / "BỆNH NHÂN". Dòng trạng thái ghi rõ AI đang soạn từ hồ sơ **đã ẩn thông tin định danh**; bác sĩ chỉnh sửa xong mới "In / Xuất PDF" và ký tươi.*
+
 ### 3) Hẹn tái khám thông minh (AI + cân bằng tải)
 1. Tại card **"Hướng xử trí"**, bấm nút **"Hẹn tái khám"**.
 2. AI đọc hồ sơ và đề xuất khoảng tái khám **kèm lý do y khoa** (khung xanh) — ví dụ ca 39 tuần + ĐTĐTK sẽ hẹn 1 tuần.
