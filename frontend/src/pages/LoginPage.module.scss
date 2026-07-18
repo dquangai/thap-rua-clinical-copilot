@@ -235,8 +235,7 @@
   gap: 10px;
 }
 
-.submitButton,
-.demoButton {
+.submitButton {
   height: 47px;
   display: flex;
   align-items: center;
@@ -255,16 +254,7 @@
 
 .submitButton:hover:not(:disabled) { background: #0e3d71; transform: translateY(-1px); }
 
-.demoButton {
-  border: 1px solid #b9cce0;
-  color: var(--brand-navy);
-  background: #f7faff;
-  box-shadow: none;
-}
-
-.demoButton:hover:not(:disabled) { border-color: var(--brand-navy); background: #edf4fb; }
-.submitButton:disabled,
-.demoButton:disabled { cursor: not-allowed; opacity: .58; box-shadow: none; }
+.submitButton:disabled { cursor: not-allowed; opacity: .58; box-shadow: none; }
 
 .buttonSpinner,
 .spinner {

@@ -8,7 +8,6 @@ import {
   HeartPulse,
   LockKeyhole,
   Mail,
-  MonitorPlay,
   ShieldCheck,
 } from 'lucide-react'
 import thapRuaMark from '../assets/thap-rua-mark.svg'
@@ -55,6 +54,7 @@ export default function LoginPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
+    // Tài khoản demo đăng nhập cục bộ, không cần Supabase.
     if (email === DEMO_DOCTOR_EMAIL && password === DEMO_DOCTOR_PASSWORD) {
       enterDemoMode()
       navigateToWorkspace()
@@ -67,11 +67,6 @@ export default function LoginPage() {
     } catch {
       // The auth store exposes the API error to the form.
     }
-  }
-
-  const handleDemoMode = () => {
-    enterDemoMode()
-    navigateToWorkspace()
   }
 
   return (
@@ -154,9 +149,6 @@ export default function LoginPage() {
             <div className={styles.loginActions}>
               <button className={styles.submitButton} type="submit" disabled={isSubmitting || !email || password.length < 8}>
                 {isSubmitting ? <><span className={styles.buttonSpinner} /> Đang đăng nhập...</> : <>Đăng nhập <ArrowRight size={18} /></>}
-              </button>
-              <button className={styles.demoButton} type="button" onClick={handleDemoMode} disabled={isSubmitting}>
-                <MonitorPlay size={18} /> Chế độ demo
               </button>
             </div>
           </form>
