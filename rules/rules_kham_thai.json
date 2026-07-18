@@ -1,0 +1,166 @@
+{
+  "metadata": {
+    "ten_phac_do": "Khám thai",
+    "nguon": "Phác đồ điều trị 2025 - Bệnh viện Đa khoa Hồng Hưng (trang 590-594)",
+    "phien_ban": "1.0",
+    "icd_codes": ["Z32.0", "Z34.0", "Z35"],
+    "tai_lieu_tham_khao": [
+      "BV Hùng Vương (2024): Hướng dẫn điều trị sản phụ khoa",
+      "BV Từ Dũ (2022): Phác đồ điều trị sản phụ khoa"
+    ],
+    "ghi_chu_danh_gia": "Mỗi rule có: scope (khi nào áp dụng), items (nội dung bắt buộc), severity, va logic kiểm tra. Mức severity: CRITICAL = bỏ sót ảnh hưởng an toàn/chẩn đoán; MAJOR = bắt buộc theo phác đồ; MINOR = khuyến cáo/tư vấn; CONDITIONAL = chỉ bắt buộc khi thỏa điều kiện."
+  },
+
+  "dinh_nghia_tam_ca_nguyet": {
+    "TCN1": { "mo_ta": "Ba tháng đầu", "tu": "trễ kinh", "den_tuan": 13, "den_ngay": 6 },
+    "TCN2": { "mo_ta": "Ba tháng giữa", "tu_tuan": 14, "den_tuan": 28, "den_ngay": 6 },
+    "TCN3": { "mo_ta": "Ba tháng cuối", "tu_tuan": 29, "den_tuan": 40 }
+  },
+
+  "rules": [
+    {
+      "rule_id": "R01",
+      "ten": "Hỏi bệnh và khai thác tiền sử",
+      "scope": { "ap_dung": "moi_benh_nhan_kham_thai", "ghi_chu": "Bất kể tuổi thai và nơi khám trước đó" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R01.1", "noi_dung": "Tiền sử phụ khoa: tuổi kết hôn, chu kỳ kinh nguyệt, biện pháp tránh thai, tiền sử vô sinh, bệnh lý/phẫu thuật phụ khoa" },
+        { "id": "R01.2", "noi_dung": "Tiền sử sản khoa: PARA, chi tiết các lần mang thai trước (tiền sản giật, đái tháo đường, dị tật thai, cân nặng lúc sinh, phương pháp sinh, biến chứng sau sinh)" },
+        { "id": "R01.3", "noi_dung": "Tiền sử nội - ngoại khoa: bệnh cấp tính, bệnh mạn tính (tim mạch, ĐTĐ, hô hấp, gan, thận, huyết học, tâm thần), phẫu thuật/thủ thuật đã thực hiện" },
+        { "id": "R01.4", "noi_dung": "Tiền sử dị ứng thuốc/thức ăn" },
+        { "id": "R01.5", "noi_dung": "Tiền sử gia đình: bệnh di truyền, nội khoa, nhiễm trùng có tính chất gia đình" },
+        { "id": "R01.6", "noi_dung": "Thai kỳ hiện tại: quá trình khám thai trước đó, hồ sơ khám" },
+        { "id": "R01.7", "noi_dung": "Hỏi dấu hiệu bất thường: đau bụng, ra máu/dịch âm đạo, đau đầu, hoa mắt, chóng mặt, đau thượng vị, nôn ói nhiều (nghi tiền sản giật), mệt mỏi, khó thở", "severity": "CRITICAL" }
+      ]
+    },
+
+    {
+      "rule_id": "R02",
+      "ten": "Khám lâm sàng toàn diện",
+      "scope": { "ap_dung": "moi_lan_kham" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R02.1", "noi_dung": "Đo mạch và huyết áp", "tan_suat": "mỗi lần khám", "severity": "CRITICAL" },
+        { "id": "R02.2", "noi_dung": "Đo nhiệt độ", "dieu_kien": "khi có chỉ định", "severity": "CONDITIONAL" },
+        { "id": "R02.3", "noi_dung": "Đo nhịp thở", "dieu_kien": "khi có chỉ định", "severity": "CONDITIONAL" },
+        { "id": "R02.4", "noi_dung": "Đo chiều cao, cân nặng để tính BMI và theo dõi tăng cân", "tan_suat": "mỗi lần khám" },
+        { "id": "R02.5", "noi_dung": "Khám toàn thân: da, niêm mạc, dấu hiệu phù, khám tim, phổi, tuyến giáp" },
+        { "id": "R02.6", "noi_dung": "Khám bụng: quan sát sẹo phẫu thuật cũ, đo bề cao tử cung (BCTC), vòng bụng" }
+      ]
+    },
+
+    {
+      "rule_id": "R03",
+      "ten": "Khám sản khoa - Ba tháng đầu",
+      "scope": { "tam_ca_nguyet": "TCN1", "tuoi_thai": "trễ kinh đến 13 tuần 6 ngày" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R03.1", "noi_dung": "Khám âm đạo", "dieu_kien": "lần khám đầu tiên HOẶC khi có chỉ định HOẶC thai phụ yêu cầu", "severity": "CONDITIONAL" },
+        { "id": "R03.2", "noi_dung": "Siêu âm thai: xác định vị trí thai, số lượng thai (nếu đa thai: số bánh nhau và buồng ối), tuổi thai, đánh giá sinh tồn của thai", "severity": "CRITICAL" },
+        { "id": "R03.3", "noi_dung": "Siêu âm hình thái học sớm: đo CRL, độ mờ da gáy (NT), Doppler động mạch tử cung", "cua_so_thoi_gian": "11 tuần - 13 tuần 6 ngày", "severity": "CRITICAL" },
+        { "id": "R03.4", "noi_dung": "Xét nghiệm máu mẹ: công thức máu", "severity": "MAJOR" },
+        { "id": "R03.5", "noi_dung": "Nhóm máu ABO và Rhesus (Rh)", "severity": "CRITICAL" },
+        { "id": "R03.6", "noi_dung": "Đường huyết lúc đói/bất kỳ" },
+        { "id": "R03.7", "noi_dung": "Xét nghiệm miễn dịch: HIV, HBsAg, giang mai (anti-TP), Rubella (IgG, IgM)", "severity": "CRITICAL" },
+        { "id": "R03.8", "noi_dung": "Tầm soát tuyến giáp: TSH, fT4, fT3", "dieu_kien": "khi có yếu tố nguy cơ", "severity": "CONDITIONAL" },
+        { "id": "R03.9", "noi_dung": "PLGF", "dieu_kien": "thai phụ có yếu tố nguy cơ: THA mạn, đái tháo đường, thai kỳ hỗ trợ sinh sản, tiền căn THA/TSG, bệnh lý tự miễn", "severity": "CONDITIONAL" },
+        { "id": "R03.10", "noi_dung": "Sàng lọc lệch bội cho thai: NIPT hoặc Double test", "severity": "MAJOR" },
+        { "id": "R03.11", "noi_dung": "Tầm soát nguy cơ tiền sản giật (TSG): thực hiện đồng thời với sàng lọc lệch bội, dùng mô hình FMF kết hợp đa yếu tố", "severity": "MAJOR" },
+        { "id": "R03.12", "noi_dung": "Nếu sàng lọc FMF ra nguy cơ cao TSG → tư vấn dự phòng Aspirin 162 mg/ngày", "dieu_kien": "kết quả FMF nguy cơ cao", "severity": "CRITICAL", "loai": "hanh_dong_theo_ket_qua" }
+      ]
+    },
+
+    {
+      "rule_id": "R04",
+      "ten": "Khám sản khoa - Ba tháng giữa",
+      "scope": { "tam_ca_nguyet": "TCN2", "tuoi_thai": "14 tuần - 28 tuần 6 ngày" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R04.1", "noi_dung": "Hỏi triệu chứng bất thường; đo sinh hiệu, BCTC, vòng bụng, đánh giá phù, theo dõi tăng cân và dinh dưỡng", "tan_suat": "mỗi lần khám" },
+        { "id": "R04.2", "noi_dung": "Siêu âm hình thái học chi tiết: khảo sát toàn diện giải phẫu thai nhi, đo chiều dài cổ tử cung tầm soát sinh non", "cua_so_thoi_gian": "20 tuần - 22 tuần 6 ngày", "severity": "CRITICAL" },
+        { "id": "R04.3", "noi_dung": "Siêu âm tim thai (áp dụng tất cả thai phụ), hẹn tại thời điểm sàng lọc đái tháo đường thai kỳ" },
+        { "id": "R04.4", "noi_dung": "Xét nghiệm tổng phân tích nước tiểu" },
+        { "id": "R04.5", "noi_dung": "NIPT/triple test", "dieu_kien": "nếu chưa làm ở TCN1", "severity": "CONDITIONAL" },
+        { "id": "R04.6", "noi_dung": "Sàng lọc đái tháo đường thai kỳ (GDM): OGTT 75g đường uống", "cua_so_thoi_gian": "24 tuần - 28 tuần", "severity": "CRITICAL" },
+        { "id": "R04.7", "noi_dung": "Tiêm phòng uốn ván mũi 1", "cua_so_thoi_gian": "20 - 21 tuần", "severity": "MAJOR" },
+        { "id": "R04.8", "noi_dung": "Uốn ván mũi 2: cách mũi 1 ít nhất 01 tháng VÀ trước sinh 01 tháng", "loai": "lich_tiem" },
+        { "id": "R04.9", "noi_dung": "Uốn ván mũi 3: cách mũi 2 ít nhất 06 tháng hoặc khi có thai lần tiếp theo", "loai": "lich_tiem" },
+        { "id": "R04.10", "noi_dung": "Uốn ván mũi 4: cách mũi 3 ít nhất 01 năm hoặc khi có thai lần tiếp theo", "loai": "lich_tiem" },
+        { "id": "R04.11", "noi_dung": "Uốn ván mũi 5: cách mũi 4 ít nhất 01 năm hoặc khi có thai lần tiếp theo", "loai": "lich_tiem" }
+      ]
+    },
+
+    {
+      "rule_id": "R05",
+      "ten": "Khám sản khoa - Ba tháng cuối",
+      "scope": { "tam_ca_nguyet": "TCN3", "tuoi_thai": "29 - 40 tuần" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R05.1", "noi_dung": "Khám thường quy: hỏi triệu chứng cơ năng bất thường, đo sinh hiệu, BCTC, mức độ phù, cân nặng mẹ, dinh dưỡng, tổng phân tích nước tiểu", "tan_suat": "mỗi lần khám", "severity": "CRITICAL" },
+        { "id": "R05.2", "noi_dung": "Siêu âm thai: đánh giá tăng trưởng, bánh nhau, dây rốn, lượng nước ối" },
+        { "id": "R05.3", "noi_dung": "Siêu âm Doppler thai nhi - thai kỳ bình thường: 1 lần lúc 32 tuần và sau đó từ 39 tuần", "dieu_kien": "thai kỳ bình thường", "severity": "CONDITIONAL" },
+        { "id": "R05.4", "noi_dung": "Siêu âm Doppler thai nhi - thai kỳ nguy cơ cao: bắt đầu từ 32 tuần và những lần khám tiếp theo", "dieu_kien": "thai kỳ nguy cơ cao", "severity": "CRITICAL" },
+        { "id": "R05.5", "noi_dung": "Siêu âm tim thai", "dieu_kien": "nếu chưa siêu âm lần nào", "severity": "CONDITIONAL" },
+        { "id": "R05.6", "noi_dung": "Xét nghiệm máu mẹ tổng quát", "dieu_kien": "nếu chưa làm", "severity": "CONDITIONAL" },
+        { "id": "R05.7", "noi_dung": "Non-stress test (NST) - thai kỳ bình thường: từ 37 tuần trở lên", "dieu_kien": "thai kỳ bình thường, tuổi thai >= 37 tuần" },
+        { "id": "R05.8", "noi_dung": "Non-stress test (NST) - thai kỳ nguy cơ cao (ĐTĐ, NNC TSG, có bệnh lý): từ 35 tuần trở lên", "dieu_kien": "thai kỳ nguy cơ cao, tuổi thai >= 35 tuần", "severity": "CRITICAL" },
+        { "id": "R05.9", "noi_dung": "Sàng lọc liên cầu khuẩn nhóm B (GBS): phết âm đạo - trực tràng thường quy", "cua_so_thoi_gian": "35 - 37 tuần", "severity": "CRITICAL" }
+      ]
+    },
+
+    {
+      "rule_id": "R06",
+      "ten": "Kết luận sau khám",
+      "scope": { "ap_dung": "moi_lan_kham" },
+      "severity": "MAJOR",
+      "items": [
+        { "id": "R06.1", "noi_dung": "Chẩn đoán tuổi thai + phân loại thai kỳ nguy cơ cao", "severity": "CRITICAL" },
+        { "id": "R06.2", "noi_dung": "Bổ sung vi chất: Sắt 30-60 mg/ngày; Acid folic 800-1000 mcg/ngày; Canxi 1000-1500 mg/ngày", "loai": "ke_don", "kiem_tra_lieu": true },
+        { "id": "R06.3", "noi_dung": "Tư vấn chế độ dinh dưỡng và sinh hoạt trong thai kỳ", "severity": "MINOR" },
+        { "id": "R06.4", "noi_dung": "Hướng dẫn nhận biết dấu hiệu bệnh lý, dấu hiệu chuyển dạ, cách theo dõi thai máy", "severity": "MAJOR" },
+        { "id": "R06.5", "noi_dung": "Tư vấn phương pháp sinh, nơi sinh, các gói sinh", "severity": "MINOR" },
+        { "id": "R06.6", "noi_dung": "Tư vấn nuôi con bằng sữa mẹ và chuẩn bị thời kỳ hậu sản", "severity": "MINOR" },
+        { "id": "R06.7", "noi_dung": "Hẹn tái khám đúng lịch theo phụ lục", "severity": "MAJOR" }
+      ]
+    },
+
+    {
+      "rule_id": "R07",
+      "ten": "Lịch hẹn tái khám thai",
+      "scope": { "ap_dung": "moi_lan_kham", "loai": "lich_hen" },
+      "severity": "MAJOR",
+      "lich": [
+        { "tam_ca_nguyet": "TCN1", "tuoi_thai": "trễ kinh", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN1", "tuoi_thai": "11 - 13 tuần 6 ngày", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN2", "tuoi_thai": "16 - 18 tuần", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN2", "tuoi_thai": "20 - 22 tuần 6 ngày", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN2", "tuoi_thai": "24 - 28 tuần", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN3", "tuoi_thai": "32 - 34 tuần", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN3", "tuoi_thai": "35 - 37 tuần", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN3", "tuoi_thai": "38 - 39 tuần", "so_lan": "1 lần" },
+        { "tam_ca_nguyet": "TCN3", "tuoi_thai": "39 - 40 tuần", "so_lan": "3 ngày khám 1 lần" }
+      ],
+      "logic_kiem_tra": "Ngày hẹn tái khám bác sĩ ghi trong hồ sơ phải rơi vào cửa sổ tuổi thai kế tiếp theo bảng lịch; từ 39-40 tuần chu kỳ hẹn tối đa 3 ngày."
+    }
+  ],
+
+  "output_schema_cho_ai_checker": {
+    "mo_ta": "Định dạng kết quả AI phải trả về khi chấm 1 hồ sơ khám",
+    "schema": {
+      "thong_tin_lan_kham": { "tuoi_thai_tuan": "number", "tuoi_thai_ngay": "number", "phan_loai_nguy_co": "binh_thuong | nguy_co_cao | khong_ghi_nhan", "lan_kham_thu": "number" },
+      "ket_qua_theo_rule": [
+        {
+          "item_id": "string (vd R03.5)",
+          "trang_thai": "DAT | KHONG_DAT | KHONG_AP_DUNG | THIEU_DU_LIEU",
+          "bang_chung": "trích dẫn ngắn từ hồ sơ",
+          "ghi_chu": "giải thích nếu KHONG_DAT hoặc THIEU_DU_LIEU"
+        }
+      ],
+      "tong_ket": {
+        "diem_tuan_thu": "số item DAT / (DAT + KHONG_DAT), tính riêng theo severity",
+        "vi_pham_critical": ["danh sách item CRITICAL không đạt"],
+        "khuyen_nghi": "hành động khắc phục"
+      }
+    }
+  }
+}

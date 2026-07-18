@@ -9,6 +9,10 @@ export interface AuthTokens {
 export interface AuthUser {
   id: string
   email: string | null
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'DOCTOR'
+  active: boolean
+  fullName?: string
+  department?: string
 }
 
 export interface AuthSession {

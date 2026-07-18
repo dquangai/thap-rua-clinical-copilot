@@ -1,0 +1,37 @@
+{
+  "pipeline_version": "trimester-v2",
+  "status": "candidate",
+  "parent_version": "baseline-v1",
+  "stages": [
+    "allowlist",
+    "redact",
+    "pii_scan",
+    "local_gestational_age_parse",
+    "trimester_scope_filter",
+    "llm_call",
+    "focused_repair",
+    "scope_exclusion_merge",
+    "schema_validation",
+    "metadata_log"
+  ],
+  "scope_policy": "Send common rules plus detected trimester rules; if age is unknown, send all rules.",
+  "coverage_policy": "Add locally excluded criteria back as KHONG_AP_DUNG so final output retains all 53 IDs.",
+  "benchmark_2026_07_17": {
+    "records": 3,
+    "baseline_average": {
+      "latency_ms": 39561.39,
+      "input_tokens": 4780.33,
+      "output_tokens": 2841.33,
+      "total_tokens": 7621.67,
+      "estimated_cost_usd": 0.00645827
+    },
+    "candidate_average": {
+      "latency_ms": 25960.77,
+      "input_tokens": 3598.33,
+      "output_tokens": 1846.0,
+      "total_tokens": 5444.33,
+      "estimated_cost_usd": 0.00439293
+    },
+    "notes": "Small sample benchmark; one candidate run used a focused repair call. Clinical quality is not established by these operational metrics."
+  }
+}

@@ -38,3 +38,8 @@ Backend dùng Python/FastAPI với Supabase Cloud PostgreSQL và Supabase Auth. 
 2. Clinical core: orders/results, thuốc-vật tư, mẫu bệnh án, ICD-10, FHIR adapters.
 3. AI copilot: tóm tắt hồ sơ, gợi ý ICD, kiểm tra thiếu dữ liệu, soạn hướng dẫn tái khám.
 4. Production hardening: observability, backup, disaster recovery, security review, clinical evaluation.
+
+## Tài liệu AI compliance checker
+
+- Hướng dẫn chạy: [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md).
+- Tài liệu kỹ thuật đầy đủ: [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md).

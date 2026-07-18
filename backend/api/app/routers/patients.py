@@ -16,7 +16,7 @@ def list_patients(
     _: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_admin_client),
 ):
-    request = db.table("patients").select("*").order("created_at", desc=True).limit(limit)
+    request = db.table("patients").select("*").is_("deleted_at", "null").order("created_at", desc=True).limit(limit)
     if query:
         safe_query = query.replace(",", " ")
         request = request.or_(f"full_name.ilike.%{safe_query}%,medical_record_number.ilike.%{safe_query}%")

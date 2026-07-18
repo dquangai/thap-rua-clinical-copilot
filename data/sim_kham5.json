@@ -1,0 +1,39 @@
+{
+  "record_id": "SIM-005",
+  "visit": {
+    "visit_code": "KB170720261330",
+    "visit_datetime": "2026-07-17T13:30:00",
+    "reason": "Tái khám",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "VÕ THỊ KIM NGÂN",
+    "age": 32,
+    "gender": "Nữ",
+    "phone": "0947216385",
+    "address": "Tổ 4, Ấp Suối Đá, Xã Dương Minh Châu, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": 88,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": 122,
+    "huyet_ap_tam_truong_mmhg": 78,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 156,
+    "can_nang_kg": 70,
+    "bmi": 28.76,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 1011\nDự sanh ngày: 23/07/2026  theo siêu âm thai 9 tuần\nTiền căn:  Nội - Ngoại khoa: không\nSản khoa: sinh thường 2020; sảy thai 1 lần (2022)\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa: 2 VAT\nXét Nghiệm:\nSàng lọc bé: NIPT NCT\nSàng lọc nguy cơ TSG: NCT\nSàng lọc mẹ: nhóm máu O+, HIV âm tính, HBsAg âm tính, giang mai âm tính,\nRubella IgG (+) IgM (-)\nTest dung nạp đường: DƯƠNG TÍNH (OGTT 26 tuần) - ĐTĐTK tiết chế\nGBS: âm tính (lúc 36 tuần)\nSiêu Âm:\nHình thái học : Bình thường\nSiêu âm tim thai qua thành bụng: bình thường\nSA Doppler: bình thường (32 tuần, 38 tuần)\nKhám hiện tại:\nTỉnh, sinh hiệu ổn\nNiêm hồng, bụng mềm, không phù\nTim thai (140 l/ph)\nBCTC: 33 cm, VB: 100 cm\nSA: TT 140 l/p, ƯLCN 3400g, ối trung bình\nNước tiểu: protein âm tính, glucose âm tính\nNST: chưa thực hiện",
+    "huong_xu_tri": "TOA VỀ: SẮT 30MG 1V/NGÀY, ACID FOLIC 400MCG 1V/NGÀY, CANXI 500MG 1V/NGÀY\nTÁI KHÁM SAU 01 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ",
+    "tu_van": "BIÊN BẢN TƯ VẤN:\nĐã tư vấn cho thai phụ về tình trạng đái tháo đường thai kỳ đang tiết chế:\n- Nguy cơ nếu đường huyết không ổn định: thai to, sinh khó, hạ đường huyết sơ sinh, tăng nguy cơ tiền sản giật.\n- Hiện tại đường huyết kiểm soát tốt bằng tiết chế, thai phát triển bình thường; đa số trường hợp theo dõi đúng lịch đều sinh an toàn.\n- Kế hoạch: tiếp tục chế độ ăn theo hướng dẫn, theo dõi cử động thai hằng ngày, thử đường huyết theo lịch, tái khám đúng hẹn.\n- Dặn dò khám ngay khi: thai máy yếu, đau bụng từng cơn, ra huyết hoặc ra nước âm đạo, nhức đầu hoa mắt.\nThai phụ hiểu rõ và đồng ý kế hoạch theo dõi."
+  },
+  "diagnosis": {
+    "icd10": "Z34",
+    "mo_ta": "THAI 39 TUẦN 01 NGÀY / ĐTĐTK TIẾT CHẾ"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T14:05:00"
+}

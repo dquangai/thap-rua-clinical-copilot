@@ -1,0 +1,39 @@
+{
+  "rules": [
+    {
+      "rule_id": "R08",
+      "ten": "Biên bản tư vấn bệnh nhân có bệnh lý",
+      "scope": {
+        "ap_dung": "benh_nhan_co_benh_ly",
+        "ghi_chu": "Chỉ áp dụng khi hồ sơ ghi nhận bệnh lý hoặc nguy cơ (VD: đái tháo đường thai kỳ, tăng huyết áp, tiền sản giật, nguy cơ cao, bệnh nội - ngoại khoa kèm theo, kết quả sàng lọc bất thường). Thai kỳ khỏe mạnh bình thường không có bệnh lý: kết luận KHONG_AP_DUNG cho toàn bộ nhóm R08."
+      },
+      "severity": "CRITICAL",
+      "items": [
+        {
+          "id": "R08.1",
+          "noi_dung": "Hồ sơ có biên bản tư vấn (clinical_note.tu_van) khi bệnh nhân có bệnh lý/nguy cơ; thiếu hoặc bỏ trống biên bản tư vấn là KHONG_DAT",
+          "dieu_kien": "Hồ sơ ghi nhận bệnh lý hoặc nguy cơ",
+          "severity": "CRITICAL"
+        },
+        {
+          "id": "R08.2",
+          "noi_dung": "Biên bản tư vấn nêu cụ thể nguy cơ/biến chứng của bệnh lý đối với mẹ và thai, trung thực, không né tránh",
+          "dieu_kien": "Có biên bản tư vấn",
+          "severity": "MAJOR"
+        },
+        {
+          "id": "R08.3",
+          "noi_dung": "Biên bản tư vấn có kế hoạch theo dõi/xử trí và dặn dò dấu hiệu cần khám ngay",
+          "dieu_kien": "Có biên bản tư vấn",
+          "severity": "MAJOR"
+        },
+        {
+          "id": "R08.4",
+          "noi_dung": "Ngôn ngữ tư vấn cân bằng: thông tin nguy cơ đi kèm trấn an và hướng giải quyết; không hù dọa, không cường điệu, không dùng từ ngữ gây hoảng sợ (VD: 'chắc chắn mất con', 'không cứu được', 'rất nguy hiểm đến tính mạng' khi không có chỉ định cấp cứu)",
+          "dieu_kien": "Có biên bản tư vấn",
+          "severity": "MAJOR"
+        }
+      ]
+    }
+  ]
+}

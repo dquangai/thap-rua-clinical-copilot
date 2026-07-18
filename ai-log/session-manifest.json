@@ -1,0 +1,10 @@
+{
+  "session_id": "019f6f2d-baf3-7901-bd1c-3df887158ff4",
+  "raw_session_path": "/Users/thanhhiepvos/.codex/sessions/2026/07/17/rollout-2026-07-17T15-24-55-019f6f2d-baf3-7901-bd1c-3df887158ff4.jsonl",
+  "raw_session_snapshot_bytes": 768124,
+  "raw_session_snapshot_sha256": "eaddd4f2eae46b2ecb95c399cee3287c586993027312e23d74ee1c65e319888d",
+  "sanitized_export_path": "ai-log/codex-session.sanitized.jsonl",
+  "sanitized_export_sha256": "bd38275e859c9dcbfc05e431175b77b60d764f5a6a3badee0065885834606c7c",
+  "hash_note": "The raw Codex session is append-only while the task is active. The hash covers the recorded byte count at export time.",
+  "export_policy": "Messages only; system/developer instructions, reasoning and raw tool I/O omitted; PII/secrets redacted."
+}

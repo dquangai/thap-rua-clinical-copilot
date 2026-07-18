@@ -1,4 +1,5 @@
 ﻿import type { PatientRecord, StatusSummary } from '../types/clinical'
+import { simPatients } from './simPatients'
 
 const mainPatient: PatientRecord = {
   medicalId: '2001175594',
@@ -51,6 +52,7 @@ Sàng lọc bé: NCT`,
 - Siêu âm thai
 - NST
 Hoặc tái khám lại khi có dấu hiệu bất thường như: Sốt, đau bụng, ra nước ối, ra huyết âm đạo, thai máy yếu.`,
+  counselingRecord: '',
   doctor: 'BS. Nguyễn Thị Hương',
   nurseOne: 'NHS. Trương Ngọc Quí',
   nurseTwo: 'Chọn...',
@@ -87,11 +89,18 @@ export const mockPatients: PatientRecord[] = [
     insuranceNumber: 'HS4807215006144',
     status: 'has-results',
   },
+  ...simPatients,
 ]
 
-export const statusSummary: StatusSummary[] = [
-  { key: 'waiting', label: 'Chờ khám', count: 0 },
-  { key: 'examining', label: 'Đang khám', count: 2 },
-  { key: 'has-results', label: 'Đã có KQCLS', count: 1 },
-  { key: 'completed', label: 'Đã khám', count: 35 },
+const statusLabels: Array<[StatusSummary['key'], string]> = [
+  ['waiting', 'Chờ khám'],
+  ['examining', 'Đang khám'],
+  ['has-results', 'Đã có KQCLS'],
+  ['completed', 'Đã khám'],
 ]
+
+export const statusSummary: StatusSummary[] = statusLabels.map(([key, label]) => ({
+  key,
+  label,
+  count: mockPatients.filter((patient) => patient.status === key).length,
+}))
