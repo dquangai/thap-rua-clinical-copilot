@@ -83,7 +83,7 @@ async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRec
       body: JSON.stringify({ record, ...options }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy chạy: npm run dev:backend')
+    throw new Error('Không kết nối được API backend. Kiểm tra kết nối mạng hoặc cấu hình CORS.')
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
