@@ -52,6 +52,9 @@ import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
 
+// Bypass đăng nhập khi test local chưa có Supabase; bật bằng VITE_AUTH_BYPASS=true trong frontend/.env.local
+const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
+
 const navigation = [
   { label: 'Tổng quan', icon: House, path: '/tong-quan' },
   { label: 'Hồ sơ bệnh án', icon: FileHeart, path: '/ho-so-benh-an' },
@@ -584,7 +587,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/dang-nhap" element={<LoginPage />} />
-      <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
+      <Route path="/" element={<Navigate to={AUTH_BYPASS ? '/ho-so-benh-an' : '/dang-nhap'} replace />} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )
@@ -593,6 +596,8 @@ export default function App() {
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
   const location = useLocation()
+
+  if (AUTH_BYPASS) return children
 
   if (status !== 'authenticated') {
     return <Navigate to="/dang-nhap" replace state={{ from: location }} />
