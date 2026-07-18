@@ -7,7 +7,7 @@ Nền tảng HIS/EMR theo workflow phòng khám, tách frontend/backend rõ ràn
 ~~~text
 frontend/              # React + Vite, giao diện HIS/EMR
 backend/
-  api/                 # Clinical API và MongoDB integration
+  api/                 # FastAPI, Supabase Auth và clinical API
   ai/                  # AI gateway, model registry, evaluations
 packages/domain/       # Contract nghiệp vụ dùng chung
 docs/                  # Kiến trúc và quyết định kỹ thuật
@@ -20,7 +20,7 @@ npm install
 npm run dev:frontend
 ~~~
 
-Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực. Xem `docs/mongodb-atlas-setup.md`, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
+Backend dùng Python/FastAPI với Supabase PostgreSQL và Supabase Auth. Cấu hình biến môi trường theo `backend/api/.env.example`, sau đó chạy backend; health check mặc định tại http://localhost:4000/health. Khi chưa cấu hình Supabase, frontend vẫn hỗ trợ tài khoản demo và dữ liệu bệnh nhân mô phỏng.
 
 ## Hiện có
 
@@ -29,12 +29,13 @@ Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực
 - Tab thông tin khám, toa thuốc, dịch vụ kỹ thuật, chuyển viện, nhập viện.
 - Các action chính có feedback toast để kiểm thử workflow.
 - Domain contract cho Patient, Encounter, ClinicalNote, AiSuggestion.
+- Admin Dashboard với RBAC, quản lý tài khoản, telemetry API/AI, audit và soft-delete hồ sơ.
 - Ranh giới API/AI và nguyên tắc human-in-the-loop được ghi trong docs/architecture.md.
 - Toàn bộ frontend dùng một font UI duy nhất: DM Sans, khai báo qua biến --font-ui.
 
 ## Roadmap đề xuất
 
-1. Nền tảng: patient registry, clinical-record API và MongoDB Atlas.
+1. Nền tảng: patient registry, clinical-record API và Supabase.
 2. Clinical core: orders/results, thuốc-vật tư, mẫu bệnh án, ICD-10, FHIR adapters.
 3. AI copilot: tóm tắt hồ sơ, gợi ý ICD, kiểm tra thiếu dữ liệu, soạn hướng dẫn tái khám.
 4. Production hardening: observability, backup, disaster recovery, security review, clinical evaluation.
@@ -43,3 +44,7 @@ Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực
 
 - Hướng dẫn chạy: [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md).
 - Tài liệu kỹ thuật đầy đủ: [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md).
+
+## Tài liệu quản trị
+
+- Admin Dashboard, phân quyền, tài khoản, telemetry và audit: [docs/admin-dashboard.md](docs/admin-dashboard.md).
