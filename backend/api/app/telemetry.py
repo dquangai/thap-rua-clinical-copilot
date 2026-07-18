@@ -20,9 +20,7 @@ def write_api_usage(*, endpoint: str, method: str, telemetry: dict[str, Any], ac
             "input_tokens": telemetry.get("input_tokens") or 0,
             "output_tokens": telemetry.get("output_tokens") or 0,
             "total_tokens": telemetry.get("total_tokens") or 0,
-            "saved_tokens": telemetry.get("saved_tokens") or 0,
             "api_calls": telemetry.get("api_calls") or 0,
-            "cache_status": telemetry.get("cache_status", "bypass"),
             "cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd") or 0,
             "occurred_at": datetime.now(timezone.utc),
         })

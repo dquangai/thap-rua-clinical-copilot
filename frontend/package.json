@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "start": "serve --single --listen $PORT dist"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@types/react": "^19.2.17",
@@ -18,15 +17,11 @@
     "react-dom": "latest",
     "react-router-dom": "^7.18.1",
     "sass": "^1.101.0",
-    "serve": "^14.2.6",
     "typescript": "^7.0.2",
     "vite": "latest",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "sass-embedded": "^1.100.0"
-  },
-  "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }

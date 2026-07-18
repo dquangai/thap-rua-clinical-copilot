@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import {
@@ -17,7 +17,6 @@ import {
   ClipboardPlus,
   Database,
   Eraser,
-  Eye,
   FileClock,
   FileHeart,
   FileText,
@@ -31,7 +30,6 @@ import {
   LogOut,
   Megaphone,
   Menu,
-  Minimize2,
   Pencil,
   Pill,
   PanelLeftClose,
@@ -47,7 +45,6 @@ import {
   Syringe,
   Trash2,
   TriangleAlert,
-  Upload,
   UserRoundCheck,
   Users,
   X,
@@ -283,6 +280,8 @@ const remediationRegistry: Record<string, RemediationConfig> = {
   R07: { section: 'plan', field: 'treatmentPlan', mode: 'replace-line', keywords: ['TAI KHAM', 'HEN KHAM'], editLabel: 'Điều chỉnh ngày hẹn theo tuổi thai' },
 }
 
+const plainClinicalText = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase()
+
 const defaultRemediation = (itemId: string): RemediationConfig => {
   if (itemId.startsWith('R01')) return { section: 'history', field: 'clinicalProgress', mode: 'append' }
   if (['R02.5', 'R02.6'].includes(itemId)) return { section: 'physical-exam', field: 'clinicalProgress', mode: 'append' }
@@ -484,47 +483,15 @@ type FieldProps = {
   unit?: string
   className?: string
   required?: boolean
-  type?: 'text' | 'number'
-  min?: number
-  max?: number
-  step?: number | 'any'
-  onChange?: (value: string) => void
 }
 
-function Field({ label, value, unit, className = '', required = false, type = 'text', min, max, step, onChange }: FieldProps) {
+function Field({ label, value, unit, className = '', required = false }: FieldProps) {
   return (
     <label className={`${styles.field} ${className}`}>
       <span>{label}{required && <b>*</b>}</span>
-      <div className={`${styles.inputShell} ${onChange ? styles.editableInputShell : ''}`}>
-        <input
-          type={type}
-          min={min}
-          max={max}
-          step={step}
-          value={value ?? ''}
-          readOnly={!onChange}
-          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
-          aria-label={label}
-        />
+      <div className={styles.inputShell}>
+        <input value={value ?? ''} readOnly aria-label={label} />
         {unit && <em>{unit}</em>}
-      </div>
-    </label>
-  )
-}
-
-function BloodPressureField({ systolic, diastolic, onChange }: {
-  systolic: number | null
-  diastolic: number | null
-  onChange: (field: 'systolicBloodPressure' | 'diastolicBloodPressure', value: string) => void
-}) {
-  return (
-    <label className={styles.field}>
-      <span>Huyết áp</span>
-      <div className={`${styles.inputShell} ${styles.editableInputShell} ${styles.bloodPressureShell}`}>
-        <input type="number" min={0} max={300} value={systolic ?? ''} onChange={(event) => onChange('systolicBloodPressure', event.target.value)} aria-label="Huyết áp tâm thu" />
-        <i aria-hidden="true">/</i>
-        <input type="number" min={0} max={200} value={diastolic ?? ''} onChange={(event) => onChange('diastolicBloodPressure', event.target.value)} aria-label="Huyết áp tâm trương" />
-        <em>mmHg</em>
       </div>
     </label>
   )
@@ -553,39 +520,14 @@ type AiDocumentNotes = {
   counselingRecord: string
 }
 
-type CriterionApproval = {
-  snapshot: string
-  runId: string
-  approvedAt: number
-}
-
-
-function criterionSnapshot(itemId: string, patient: PatientRecord, notes: AiDocumentNotes) {
-  const config = remediationFor(itemId)
-  if (config.mode !== 'structured') return JSON.stringify({ field: config.field, value: config.field ? notes[config.field] : '' })
-  const vitalSigns = patient.vitalSigns
-  if (config.section === 'circulation') {
-    return JSON.stringify({
-      pulse: vitalSigns.pulse,
-      systolicBloodPressure: vitalSigns.systolicBloodPressure,
-      diastolicBloodPressure: vitalSigns.diastolicBloodPressure,
-    })
-  }
-  if (config.section === 'temperature') return JSON.stringify({ temperature: vitalSigns.temperature })
-  if (config.section === 'respiration') return JSON.stringify({ respiratoryRate: vitalSigns.respiratoryRate })
-  if (config.section === 'anthropometrics') return JSON.stringify({ height: vitalSigns.height, weight: vitalSigns.weight, bmi: vitalSigns.bmi })
-  return JSON.stringify({ section: config.section })
-}
-
-function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onApproveCriterion, onMinimize, onClose }: {
+function AiCheckModal({ state, patient, notes, onEditNotes, onAppendNotes, onEditVitals, onClose }: {
   state: AiCheckState
   patient: PatientRecord
   notes: AiDocumentNotes
   onEditNotes: (field: keyof AiDocumentNotes, value: string) => void
+  onAppendNotes: (field: keyof AiDocumentNotes, value: string) => void
   onEditVitals: (field: 'pulse' | 'respiratoryRate' | 'systolicBloodPressure' | 'diastolicBloodPressure' | 'temperature' | 'height' | 'weight', value: number | null) => void
   onClose: () => void
-  onApproveCriterion: (itemId: string) => void
-  onMinimize: () => void
 }) {
   const { loading, error, data } = state
   const result = data?.result
@@ -593,6 +535,7 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
   const failures = result?.khong_dat ?? []
   const passed = result?.ket_luan === 'DAT'
   const criticalSet = new Set(result?.vi_pham_critical ?? [])
+  const [activeFailure, setActiveFailure] = useState<string | null>(null)
   const [scanRuleIndex, setScanRuleIndex] = useState(0)
   useEffect(() => {
     if (!loading) return
@@ -600,47 +543,105 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
     return () => window.clearInterval(timer)
   }, [loading])
 
-  const previewSourceRef = useRef<HTMLDivElement>(null)
-  const [previewOpen, setPreviewOpen] = useState(false)
   const failureGroup = (itemId: string) => remediationFor(itemId).section
   const groupFailures = (group: string) => failures.filter((failure) => failureGroup(failure.item_id) === group)
-
-  const printClinicalPreview = () => {
-    const paper = previewSourceRef.current?.querySelector(`.${styles.aiPaper}`)
-    if (!paper) return
-    const printWindow = window.open('', '_blank', 'width=980,height=760')
-    if (!printWindow) return
-    printWindow.opener = null
-    const stylesheetMarkup = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map((node) => node.outerHTML)
-      .join('\n')
-    printWindow.document.open()
-    printWindow.document.write(`<!doctype html><html lang="vi"><head><meta charset="utf-8"><title>Hồ sơ khám bệnh</title>${stylesheetMarkup}<style>@page{size:A4 portrait;margin:12mm}body{margin:0;background:#fff}.${styles.aiPaper}{width:100%;min-height:0;margin:0;padding:0;box-shadow:none;overflow:visible}</style></head><body>${paper.outerHTML}</body></html>`)
-    printWindow.document.close()
-    printWindow.setTimeout(() => {
-      printWindow.focus()
-      printWindow.print()
-    }, 300)
+  const lineProps = (group: string) => {
+    const related = groupFailures(group)
+    return related.length === 0 ? {} : {
+      className: `${styles.aiInlineFinding} ${activeFailure && related.some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`,
+      onMouseEnter: () => setActiveFailure(related[0].item_id),
+      onMouseLeave: () => setActiveFailure(null),
+    }
+  }
+  const editableProps = (group: string, field: keyof AiDocumentNotes) => groupFailures(group).length === 0 ? {} : {
+    ...lineProps(group),
+    contentEditable: true,
+    suppressContentEditableWarning: true,
+    role: 'textbox',
+    title: 'Nhấn để chỉnh sửa trực tiếp',
+    onBlur: (event: React.FocusEvent<HTMLElement>) => onEditNotes(field, event.currentTarget.textContent ?? ''),
+  }
+  const renderPreciseFindings = (groups: string[], field: keyof AiDocumentNotes, excludedIds: string[] = []) => groups
+    .flatMap((group) => groupFailures(group))
+    .filter((failure) => {
+      const config = remediationFor(failure.item_id)
+      return !excludedIds.includes(failure.item_id) && (config.mode === 'append'
+        || (config.mode === 'replace-line' && !matchedLineRuleIds(field).includes(failure.item_id)))
+    })
+    .map((failure) => (
+    <div
+      key={failure.item_id}
+      className={`${styles.aiFindingEditor} ${activeFailure === failure.item_id ? styles.aiFindingActive : ''}`}
+      onMouseEnter={() => setActiveFailure(failure.item_id)}
+      onMouseLeave={() => setActiveFailure(null)}
+    >
+      <div className={styles.aiFindingReminder}>
+        <TriangleAlert size={10} />
+        <span><b>{failure.item_id}</b> {failure.ly_do || catalog[failure.item_id] || 'Thiếu thông tin theo tiêu chí'}</span>
+      </div>
+      <label className={styles.aiFindingInput}>
+        <span>Nội dung bác sĩ bổ sung</span>
+        <textarea
+          rows={2}
+          placeholder="Nhập thông tin cần bổ sung vào hồ sơ…"
+          onFocus={() => setActiveFailure(failure.item_id)}
+          onBlur={(event) => {
+            const value = event.currentTarget.value.trim()
+            if (value) {
+              onAppendNotes(field, value)
+              event.currentTarget.value = ''
+              event.currentTarget.placeholder = 'Đã thêm vào hồ sơ'
+            }
+            setActiveFailure(null)
+          }}
+        />
+      </label>
+    </div>
+  ))
+  const matchedLineRuleIds = (field: keyof AiDocumentNotes) => failures.filter((failure) => {
+    const config = remediationFor(failure.item_id)
+    return config.mode === 'replace-line' && config.field === field && config.keywords?.some((keyword) =>
+      notes[field].split('\n').some((line) => plainClinicalText(line).includes(keyword)))
+  }).map((failure) => failure.item_id)
+  const renderEditableLines = (field: keyof AiDocumentNotes) => {
+    const lines = notes[field].split('\n')
+    const claimed = new Set<string>()
+    return lines.map((line, index) => {
+      const normalizedLine = plainClinicalText(line)
+      const failure = failures.find((candidate) => {
+        const config = remediationFor(candidate.item_id)
+        return !claimed.has(candidate.item_id) && config.mode === 'replace-line' && config.field === field
+          && config.keywords?.some((keyword) => normalizedLine.includes(keyword))
+      })
+      if (!failure) return <p key={`${index}-${line}`}>{line || 'Chưa ghi nhận thông tin.'}</p>
+      claimed.add(failure.item_id)
+      const config = remediationFor(failure.item_id)
+      return (
+        <div
+          key={`${index}-${failure.item_id}`}
+          className={`${styles.aiDirectCorrection} ${activeFailure === failure.item_id ? styles.aiFindingActive : ''}`}
+          onMouseEnter={() => setActiveFailure(failure.item_id)}
+          onMouseLeave={() => setActiveFailure(null)}
+        >
+          <span><TriangleAlert size={9} />{config.editLabel ?? 'Thông tin hiện tại chưa đạt — nhấn vào dòng dưới để sửa'}</span>
+          <p
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            onFocus={() => setActiveFailure(failure.item_id)}
+            onBlur={(event) => {
+              const updated = [...lines]
+              updated[index] = event.currentTarget.textContent?.trim() ?? ''
+              onEditNotes(field, updated.join('\n'))
+              setActiveFailure(null)
+            }}
+          >{line}</p>
+        </div>
+      )
+    })
   }
 
-  const renderDirectEditable = (field: keyof AiDocumentNotes, scanning: boolean, editable: boolean) => {
-    const value = notes[field]
-    if (scanning || !editable) return <p>{value || 'Chưa ghi nhận thông tin.'}</p>
-    return (
-      <div
-        className={styles.aiDirectField}
-        contentEditable
-        suppressContentEditableWarning
-        role="textbox"
-        tabIndex={0}
-        title="Nhấn để chỉnh sửa trực tiếp trên hồ sơ"
-        data-placeholder="Nhấn để bổ sung nội dung trực tiếp…"
-        onBlur={(event) => onEditNotes(field, event.currentTarget.innerText.trim())}
-      >{value}</div>
-    )
-  }
-
-  const renderPaper = (scanning = false, editable = true) => (
+  const renderPaper = (scanning = false) => (
     <div className={`${styles.aiPaper} ${scanning ? styles.aiPaperScanning : ''}`}>
       {scanning && <div className={styles.aiScanBeam} aria-hidden="true" />}
       <div className={styles.aiPaperBrand}><img src={thapRuaMark} alt="" /><div><strong>BỆNH VIỆN THÁP RÙA</strong><span>PHIẾU KHÁM BỆNH</span></div></div>
@@ -655,24 +656,25 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
       <section className={styles.aiPaperSection}><h4>Lý do khám</h4><p>{patient.reason || 'Chưa ghi nhận'}</p></section>
       <section className={styles.aiPaperSection}>
         <h4>Diễn biến bệnh và khám thai</h4>
-        {renderDirectEditable('clinicalProgress', scanning, editable)}
+        {renderEditableLines('clinicalProgress')}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['history', 'physical-exam', 'investigations', 'progress'], 'clinicalProgress')}</div>}
       </section>
       <section className={styles.aiPaperSection}>
         <h4>Dấu hiệu sinh tồn và khám toàn thân</h4>
         {!scanning && groupFailures('circulation').length > 0 ? (
-          <div className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor}`}>
+          <div {...lineProps('circulation')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure && groupFailures('circulation').some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`}>
             <label>Mạch <input type="number" value={patient.vitalSigns.pulse ?? ''} onChange={(event) => onEditVitals('pulse', event.target.value ? Number(event.target.value) : null)} /> lần/phút</label>
             <label>Huyết áp <input type="number" value={patient.vitalSigns.systolicBloodPressure ?? ''} onChange={(event) => onEditVitals('systolicBloodPressure', event.target.value ? Number(event.target.value) : null)} /> / <input type="number" value={patient.vitalSigns.diastolicBloodPressure ?? ''} onChange={(event) => onEditVitals('diastolicBloodPressure', event.target.value ? Number(event.target.value) : null)} /> mmHg</label>
           </div>
         ) : <p>Mạch: {patient.vitalSigns.pulse ?? '—'} lần/phút · Huyết áp: {patient.vitalSigns.systolicBloodPressure ?? '—'}/{patient.vitalSigns.diastolicBloodPressure ?? '—'} mmHg</p>}
         {!scanning && groupFailures('respiration').length > 0 ? (
-          <div className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor}`}><label>Nhịp thở <input type="number" value={patient.vitalSigns.respiratoryRate ?? ''} onChange={(event) => onEditVitals('respiratoryRate', event.target.value ? Number(event.target.value) : null)} /> lần/phút</label></div>
+          <div {...lineProps('respiration')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure === 'R02.3' ? styles.aiFindingActive : ''}`}><label>Nhịp thở <input type="number" value={patient.vitalSigns.respiratoryRate ?? ''} onChange={(event) => onEditVitals('respiratoryRate', event.target.value ? Number(event.target.value) : null)} /> lần/phút</label></div>
         ) : <p>Nhịp thở: {patient.vitalSigns.respiratoryRate ?? '—'} lần/phút</p>}
         {!scanning && groupFailures('temperature').length > 0 ? (
-          <div className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor}`}><label>Nhiệt độ <input type="number" step="0.1" value={patient.vitalSigns.temperature ?? ''} onChange={(event) => onEditVitals('temperature', event.target.value ? Number(event.target.value) : null)} /> °C</label></div>
+          <div {...lineProps('temperature')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure === 'R02.2' ? styles.aiFindingActive : ''}`}><label>Nhiệt độ <input type="number" step="0.1" value={patient.vitalSigns.temperature ?? ''} onChange={(event) => onEditVitals('temperature', event.target.value ? Number(event.target.value) : null)} /> °C</label></div>
         ) : patient.vitalSigns.temperature ? <p>Nhiệt độ: {patient.vitalSigns.temperature} °C</p> : null}
         {!scanning && groupFailures('anthropometrics').length > 0 ? (
-          <div className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor}`}>
+          <div {...lineProps('anthropometrics')} className={`${styles.aiInlineFinding} ${styles.aiVitalsEditor} ${activeFailure && groupFailures('anthropometrics').some(({ item_id }) => item_id === activeFailure) ? styles.aiFindingActive : ''}`}>
             <label>Chiều cao <input type="number" value={patient.vitalSigns.height ?? ''} onChange={(event) => onEditVitals('height', event.target.value ? Number(event.target.value) : null)} /> cm</label>
             <label>Cân nặng <input type="number" value={patient.vitalSigns.weight ?? ''} onChange={(event) => onEditVitals('weight', event.target.value ? Number(event.target.value) : null)} /> kg</label>
             <span>BMI: {patient.vitalSigns.bmi ?? '—'}</span>
@@ -682,14 +684,17 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
       <section className={styles.aiPaperSection}>
         <h4>Chẩn đoán</h4>
         <p><b>{patient.diagnoses.primaryCode}</b> — {patient.diagnoses.primaryDescription}</p>
-        {(hasSupplementaryDiagnosis(patient.diagnoses.primaryCode, patient.diagnoses.primaryDescription, notes.diagnosisSummary) || (!scanning && groupFailures('diagnosis').length > 0))
-          && renderDirectEditable('diagnosisSummary', scanning, editable)}
+        {hasSupplementaryDiagnosis(patient.diagnoses.primaryCode, patient.diagnoses.primaryDescription, notes.diagnosisSummary) && (
+          <p {...(!scanning ? editableProps('diagnosis', 'diagnosisSummary') : {})}>{notes.diagnosisSummary}</p>
+        )}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['diagnosis'], 'diagnosisSummary')}</div>}
       </section>
       <section className={styles.aiPaperSection}>
         <h4>Hướng xử trí</h4>
-        {renderDirectEditable('treatmentPlan', scanning, editable)}
+        {renderEditableLines('treatmentPlan')}
+        {!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['plan'], 'treatmentPlan')}</div>}
       </section>
-      <section className={styles.aiPaperSection}><h4>Tư vấn và dặn dò</h4>{renderDirectEditable('counselingRecord', scanning, editable)}</section>
+      <section className={styles.aiPaperSection}><h4>Tư vấn và dặn dò</h4><p>{notes.counselingRecord || 'Chưa ghi nhận nội dung tư vấn.'}</p>{!scanning && <div className={styles.aiPreciseFindingList}>{renderPreciseFindings(['counseling'], 'counselingRecord')}</div>}</section>
       <div className={styles.aiPaperSign}><span>Bác sĩ điều trị</span><strong className={scanning ? styles.aiPiiRedacted : ''}>{patient.doctor}</strong></div>
     </div>
   )
@@ -699,10 +704,7 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
       <div className={`${styles.aiModal} ${styles.aiModalWorkspace}`}>
         <header className={styles.aiModalHead}>
           <div><ShieldCheck size={17} /><h2>Kiểm tra tuân thủ hồ sơ (AI)</h2></div>
-          <div className={styles.aiModalHeadActions}>
-            <button type="button" onClick={onMinimize} aria-label="Thu nhỏ trợ lý AI"><Minimize2 size={16} /></button>
-            <button type="button" onClick={onClose} aria-label="Đóng kết quả kiểm tra"><X size={16} /></button>
-          </div>
+          <button type="button" onClick={onClose} aria-label="Đóng kết quả kiểm tra"><X size={16} /></button>
         </header>
         <div className={styles.aiModalBody}>
           {loading && (
@@ -737,26 +739,16 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
               <aside className={styles.aiResultPanel}>
                 <div className={`${styles.aiVerdict} ${passed ? styles.aiVerdictPass : styles.aiVerdictFail}`}>
                   {passed ? <CircleCheck size={22} /> : <TriangleAlert size={22} />}
-                  <div>
-                    <strong>{passed ? 'HỒ SƠ ĐẠT' : 'HỒ SƠ CHƯA ĐẠT'}</strong>
-                    <span>{passed ? 'Không còn tiêu chí cần bổ sung' : `${failures.length} tiêu chí cần bổ sung`}</span>
-                  </div>
+                  <div><strong>{passed ? 'HỒ SƠ ĐẠT' : 'HỒ SƠ CHƯA ĐẠT'}</strong><span>{passed ? 'Không phát hiện tiêu chí vi phạm' : `${failures.length} tiêu chí cần bổ sung`}</span></div>
                 </div>
-                {failures.length === 0 && (
-                  <div className={styles.aiCompletionCard}>
-                    <span><CircleCheck size={24} /></span>
-                    <strong>Hồ sơ đã hoàn thiện</strong>
-                    <p>Tất cả tiêu chí vi phạm đã được bác sĩ kiểm tra và xác nhận.</p>
-                    <div>
-                      <button type="button" onClick={() => setPreviewOpen(true)}><Eye size={14} />Xem trước hồ sơ chuẩn</button>
-                      <button type="button" onClick={printClinicalPreview}><Printer size={14} />In / Lưu PDF</button>
-                    </div>
-                  </div>
-                )}
                 {failures.length > 0 && <ul className={styles.aiExceptionList}>
                   {failures.map((failure) => (
-                    <li key={failure.item_id}>
-
+                    <li
+                      key={failure.item_id}
+                      className={activeFailure && failureGroup(activeFailure) === failureGroup(failure.item_id) ? styles.aiExceptionActive : ''}
+                      onMouseEnter={() => setActiveFailure(failure.item_id)}
+                      onMouseLeave={() => setActiveFailure(null)}
+                    >
                       <div className={styles.aiExceptionHead}>
                         <span className={styles.aiRuleCode}>{failure.item_id}</span>
                         {criticalSet.has(failure.item_id) && (
@@ -768,36 +760,22 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onEditVitals, onAppr
                       <p className={styles.aiFixHint}>
                         <span>Gợi ý sửa</span>
                         {remediationFor(failure.item_id).editLabel ?? (remediationFor(failure.item_id).mode === 'append'
-                          ? 'Sửa trực tiếp nội dung được đánh dấu trên hồ sơ bên trái'
+                          ? 'Bổ sung thông tin vào vùng nhập liệu được đánh dấu bên trái'
                           : 'Cập nhật giá trị tại vùng được đánh dấu bên trái')}
                       </p>
-                      <div className={styles.aiCriterionActions}>
-                        <button type="button" onClick={() => onApproveCriterion(failure.item_id)}>
-                          <CircleCheck size={13} />Approve
-                        </button>
-                      </div>
                     </li>
                   ))}
                 </ul>}
+              {result.khuyen_nghi && (
+                <div className={styles.aiRecommendation}>
+                  <strong>Khuyến nghị</strong>
+                  <p>{result.khuyen_nghi}</p>
+                </div>
+              )}
               </aside>
             </div>
           )}
         </div>
-        {failures.length === 0 && <div className={styles.aiPrintSource} ref={previewSourceRef}>{renderPaper(false, false)}</div>}
-        {previewOpen && (
-          <div className={styles.aiPreviewOverlay} role="dialog" aria-modal="true" aria-label="Xem trước hồ sơ chuẩn">
-            <section className={styles.aiPreviewModal}>
-              <header>
-                <div><FileText size={17} /><strong>Xem trước hồ sơ chuẩn</strong></div>
-                <div>
-                  <button type="button" onClick={printClinicalPreview}><Printer size={15} />In / Lưu PDF</button>
-                  <button type="button" onClick={() => setPreviewOpen(false)} aria-label="Đóng xem trước"><X size={16} /></button>
-                </div>
-              </header>
-              <div className={styles.aiPreviewBody}>{renderPaper(false, false)}</div>
-            </section>
-          </div>
-        )}
         <footer className={styles.aiDisclaimer}>
           Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế.
         </footer>
@@ -822,51 +800,6 @@ function CounselingModal({
   onClose: () => void
 }) {
   const today = new Date()
-  const signatureStorageKey = `thap-rua.doctor-signature.v1:${patient.doctor.trim().toLocaleLowerCase('vi-VN')}`
-  const [doctorSignature, setDoctorSignature] = useState<string | null>(() => localStorage.getItem(signatureStorageKey))
-  const [signatureError, setSignatureError] = useState('')
-
-  useEffect(() => {
-    setDoctorSignature(localStorage.getItem(signatureStorageKey))
-    setSignatureError('')
-  }, [signatureStorageKey])
-
-  const uploadDoctorSignature = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0]
-    event.currentTarget.value = ''
-    if (!file) return
-    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-      setSignatureError('Chỉ hỗ trợ ảnh PNG, JPG hoặc WebP.')
-      return
-    }
-    if (file.size > 1024 * 1024) {
-      setSignatureError('Ảnh chữ ký phải nhỏ hơn hoặc bằng 1 MB.')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') {
-        setSignatureError('Không thể đọc ảnh chữ ký. Vui lòng thử lại.')
-        return
-      }
-      try {
-        localStorage.setItem(signatureStorageKey, reader.result)
-        setDoctorSignature(reader.result)
-        setSignatureError('')
-      } catch {
-        setSignatureError('Không đủ dung lượng lưu chữ ký trên thiết bị này.')
-      }
-    }
-    reader.onerror = () => setSignatureError('Không thể đọc ảnh chữ ký. Vui lòng thử lại.')
-    reader.readAsDataURL(file)
-  }
-
-  const removeDoctorSignature = () => {
-    localStorage.removeItem(signatureStorageKey)
-    setDoctorSignature(null)
-    setSignatureError('')
-  }
   return createPortal(
     <div className={`${styles.aiModalOverlay} ${styles.counselingOverlay}`} role="dialog" aria-modal="true" aria-label="Biên bản tư vấn">
       <div className={`${styles.aiModal} ${styles.counselingModal}`}>
@@ -928,26 +861,11 @@ function CounselingModal({
               <div>
                 <strong>BÁC SĨ TƯ VẤN</strong>
                 <span>(Ký, ghi rõ họ tên)</span>
-                <div className={styles.doctorSignatureSlot}>
-                  {doctorSignature
-                    ? <img className={styles.doctorSignatureImage} src={doctorSignature} alt={`Chữ ký của ${patient.doctor}`} />
-                    : <span className={`${styles.doctorSignatureEmpty} ${styles.screenOnly}`}>Chưa tải chữ ký</span>}
-                </div>
                 <em>{patient.doctor}</em>
-                <div className={`${styles.doctorSignatureActions} ${styles.screenOnly}`}>
-                  <label className={styles.doctorSignatureUpload}>
-                    <Upload size={13} />{doctorSignature ? 'Thay chữ ký' : 'Tải chữ ký'}
-                    <input type="file" accept="image/png,image/jpeg,image/webp" onChange={uploadDoctorSignature} />
-                  </label>
-                  {doctorSignature && <button type="button" onClick={removeDoctorSignature}><Trash2 size={13} />Xóa</button>}
-                </div>
-                <small className={`${styles.doctorSignatureHint} ${styles.screenOnly}`}>PNG/JPG/WebP · tối đa 1 MB · chỉ lưu trên thiết bị này</small>
-                {signatureError && <small className={`${styles.doctorSignatureError} ${styles.screenOnly}`} role="alert">{signatureError}</small>}
               </div>
               <div>
                 <strong>BỆNH NHÂN</strong>
                 <span>(Ký, ghi rõ họ tên)</span>
-                <div className={styles.doctorSignatureSlot} aria-hidden="true" />
                 <em>{patient.fullName}</em>
               </div>
             </div>
@@ -964,38 +882,28 @@ function CounselingModal({
 
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
-  const [vitalEdits, setVitalEdits] = useState(() => ({ ...patient.vitalSigns }))
-  const [personnelEdits, setPersonnelEdits] = useState(() => ({
-    doctor: patient.doctor,
-    nurseOne: patient.nurseOne,
-    nurseTwo: patient.nurseTwo,
-  }))
-  useEffect(() => {
-    setVitalEdits({ ...patient.vitalSigns })
-    setPersonnelEdits({ doctor: patient.doctor, nurseOne: patient.nurseOne, nurseTwo: patient.nurseTwo })
-  }, [patient])
-  const vitalSigns = { ...vitalEdits }
-  const editablePatient = { ...patient, ...personnelEdits, vitalSigns }
-
-  const updateNumericVital = (field: Exclude<keyof PatientRecord['vitalSigns'], 'breastfeeding'>, rawValue: string) => {
-    setVitalEdits((current) => {
-      const parsed = rawValue === '' ? null : Number(rawValue)
-      const next = { ...current, [field]: parsed !== null && Number.isFinite(parsed) ? parsed : null }
-
-      if (field === 'height' || field === 'weight') {
-        next.bmi = next.height && next.weight ? Number((next.weight / ((next.height / 100) ** 2)).toFixed(1)) : null
-        next.bsa = next.height && next.weight ? Number(Math.sqrt((next.height * next.weight) / 3600).toFixed(2)) : null
-      }
-
-      return next
-    })
-  }
-
-  const resetClinicalEdits = () => {
-    setVitalEdits({ ...patient.vitalSigns })
-    setPersonnelEdits({ doctor: patient.doctor, nurseOne: patient.nurseOne, nurseTwo: patient.nurseTwo })
-    notify('Đã hủy thay đổi')
-  }
+  const [vitalEdits, setVitalEdits] = useState({
+    pulse: patient.vitalSigns.pulse,
+    respiratoryRate: patient.vitalSigns.respiratoryRate,
+    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
+    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
+    temperature: patient.vitalSigns.temperature,
+    height: patient.vitalSigns.height,
+    weight: patient.vitalSigns.weight,
+    bmi: patient.vitalSigns.bmi,
+  })
+  useEffect(() => setVitalEdits({
+    pulse: patient.vitalSigns.pulse,
+    respiratoryRate: patient.vitalSigns.respiratoryRate,
+    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
+    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
+    temperature: patient.vitalSigns.temperature,
+    height: patient.vitalSigns.height,
+    weight: patient.vitalSigns.weight,
+    bmi: patient.vitalSigns.bmi,
+  }), [patient.medicalId, patient.vitalSigns.height, patient.vitalSigns.weight, patient.vitalSigns.bmi])
+  const vitalSigns = { ...patient.vitalSigns, ...vitalEdits }
+  const editablePatient = { ...patient, vitalSigns }
   const progressRef = useRef<HTMLTextAreaElement>(null)
   const planRef = useRef<HTMLTextAreaElement>(null)
   const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
@@ -1004,107 +912,13 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const [counselingOpen, setCounselingOpen] = useState(false)
   const patientIdRef = useRef(patient.medicalId)
   const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
-  const [aiCheckMinimized, setAiCheckMinimized] = useState(false)
-  const [approvedCriteriaByPatient, setApprovedCriteriaByPatient] = useState<Record<string, Record<string, CriterionApproval>>>({})
-  const aiBubbleRef = useRef<HTMLButtonElement>(null)
-  const aiBubbleDragRef = useRef<{ pointerId: number; offsetX: number; offsetY: number; startX: number; startY: number; moved: boolean } | null>(null)
-  const aiBubbleSuppressClickRef = useRef(false)
-  const [aiBubblePosition, setAiBubblePosition] = useState<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     patientIdRef.current = patient.medicalId
     setCounselingText(patient.counselingRecord)
     setCounselingLoading(false)
     setCounselingOpen(false)
-    setAiCheck({ open: false, loading: false, error: '', data: null })
-    setAiCheckMinimized(false)
   }, [patient.medicalId, patient.counselingRecord])
-
-  useEffect(() => {
-    const keepBubbleInViewport = () => {
-      const bubble = aiBubbleRef.current
-      if (!bubble) return
-      setAiBubblePosition((position) => position ? {
-        x: Math.min(Math.max(8, position.x), Math.max(8, window.innerWidth - bubble.offsetWidth - 8)),
-        y: Math.min(Math.max(8, position.y), Math.max(8, window.innerHeight - bubble.offsetHeight - 8)),
-      } : null)
-    }
-    window.addEventListener('resize', keepBubbleInViewport)
-    return () => window.removeEventListener('resize', keepBubbleInViewport)
-  }, [])
-
-  useEffect(() => {
-    if (!aiCheckMinimized) return
-    const frame = window.requestAnimationFrame(() => {
-      const bubble = aiBubbleRef.current
-      if (!bubble) return
-      setAiBubblePosition((position) => position ? {
-        x: Math.min(Math.max(8, position.x), Math.max(8, window.innerWidth - bubble.offsetWidth - 8)),
-        y: Math.min(Math.max(8, position.y), Math.max(8, window.innerHeight - bubble.offsetHeight - 8)),
-      } : null)
-    })
-    return () => window.cancelAnimationFrame(frame)
-  }, [aiCheckMinimized])
-
-  const startAiBubbleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (event.button !== 0) return
-    const rect = event.currentTarget.getBoundingClientRect()
-    event.currentTarget.setPointerCapture(event.pointerId)
-    aiBubbleSuppressClickRef.current = false
-    aiBubbleDragRef.current = {
-      pointerId: event.pointerId,
-      offsetX: event.clientX - rect.left,
-      offsetY: event.clientY - rect.top,
-      startX: event.clientX,
-      startY: event.clientY,
-      moved: false,
-    }
-    setAiBubblePosition({ x: rect.left, y: rect.top })
-  }
-
-  const moveAiBubble = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const drag = aiBubbleDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    if (!drag.moved && Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY) < 5) return
-    drag.moved = true
-    const maxX = Math.max(8, window.innerWidth - event.currentTarget.offsetWidth - 8)
-    const maxY = Math.max(8, window.innerHeight - event.currentTarget.offsetHeight - 8)
-    setAiBubblePosition({
-      x: Math.min(Math.max(8, event.clientX - drag.offsetX), maxX),
-      y: Math.min(Math.max(8, event.clientY - drag.offsetY), maxY),
-    })
-  }
-
-  const finishAiBubbleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    const drag = aiBubbleDragRef.current
-    if (!drag || drag.pointerId !== event.pointerId) return
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    aiBubbleSuppressClickRef.current = drag.moved
-    aiBubbleDragRef.current = null
-  }
-
-  const cancelAiBubbleDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
-    if (aiBubbleDragRef.current?.pointerId !== event.pointerId) return
-    aiBubbleDragRef.current = null
-    aiBubbleSuppressClickRef.current = false
-  }
-
-  const openAiCheckFromBubble = () => {
-    if (aiBubbleSuppressClickRef.current) {
-      aiBubbleSuppressClickRef.current = false
-      return
-    }
-    setAiCheckMinimized(false)
-  }
-
-  const readAiNotes = (): AiDocumentNotes => ({
-    clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
-    treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
-    diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
-    counselingRecord: counselingText,
-  })
-
-  const currentNotes = readAiNotes()
 
   const handleGenerateCounseling = async () => {
     const forPatient = patient.medicalId
@@ -1132,66 +946,20 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   }
 
   const runAiCheck = async () => {
-    const forPatient = patient.medicalId
-    const notes = readAiNotes()
-    const approvals = approvedCriteriaByPatient[forPatient] ?? {}
-    const validApprovedIds = Object.entries(approvals)
-      .filter(([itemId, approval]) => approval.snapshot === criterionSnapshot(itemId, editablePatient, notes))
-      .map(([itemId]) => itemId)
-    const staleIds = Object.keys(approvals).filter((itemId) => !validApprovedIds.includes(itemId))
-    if (staleIds.length > 0) {
-      setApprovedCriteriaByPatient((current) => {
-        const nextForPatient = { ...(current[forPatient] ?? {}) }
-        staleIds.forEach((itemId) => delete nextForPatient[itemId])
-        return { ...current, [forPatient]: nextForPatient }
-      })
-    }
-
-    setAiCheckMinimized(false)
     setAiCheck({ open: true, loading: true, error: '', data: null })
     try {
-      const record = buildCheckerRecord(editablePatient, notes)
-      const data = await checkClinicalRecord(record, { excludeCriteria: validApprovedIds })
-      if (patientIdRef.current !== forPatient) return
+      const record = buildCheckerRecord(editablePatient, {
+        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+        counselingRecord: counselingText,
+      })
+      const data = await checkClinicalRecord(record)
       setAiCheck((state) => ({ ...state, loading: false, data }))
     } catch (error) {
-      if (patientIdRef.current !== forPatient) return
       const message = error instanceof Error ? error.message : 'Lỗi không xác định khi kiểm tra hồ sơ'
       setAiCheck((state) => ({ ...state, loading: false, error: message }))
     }
-  }
-
-  const approveCriterion = (itemId: string) => {
-    const forPatient = patient.medicalId
-    const notes = readAiNotes()
-    setApprovedCriteriaByPatient((current) => ({
-      ...current,
-      [forPatient]: {
-        ...(current[forPatient] ?? {}),
-        [itemId]: {
-          snapshot: criterionSnapshot(itemId, editablePatient, notes),
-          runId: aiCheck.data?.run_id ?? 'manual',
-          approvedAt: Date.now(),
-        },
-      },
-    }))
-    setAiCheck((current) => {
-      if (!current.data) return current
-      const remaining = current.data.result.khong_dat.filter((item) => item.item_id !== itemId)
-      return {
-        ...current,
-        data: {
-          ...current.data,
-          result: {
-            ...current.data.result,
-            ket_luan: remaining.length === 0 ? 'DAT' : 'KHONG_DAT',
-            khong_dat: remaining,
-            vi_pham_critical: current.data.result.vi_pham_critical.filter((id) => id !== itemId),
-            khuyen_nghi: remaining.length === 0 ? '' : current.data.result.khuyen_nghi,
-          },
-        },
-      }
-    })
   }
 
   return (
@@ -1296,55 +1064,45 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
             <header className={styles.cardHeader}><Activity size={16} /><h3>Dấu hiệu sinh tồn</h3></header>
             <div className={`${styles.cardBody} ${styles.clinicalDetailsBody}`}>
               <div className={styles.vitalsGrid}>
-                <Field label="Mạch" value={vitalSigns.pulse} unit="lần/phút" type="number" min={0} max={300} onChange={(value) => updateNumericVital('pulse', value)} />
-                <Field label="Nhịp thở" value={vitalSigns.respiratoryRate} unit="lần/phút" type="number" min={0} max={100} onChange={(value) => updateNumericVital('respiratoryRate', value)} />
-                <BloodPressureField systolic={vitalSigns.systolicBloodPressure} diastolic={vitalSigns.diastolicBloodPressure} onChange={updateNumericVital} />
-                <Field label="SpO₂" value={vitalSigns.spo2} unit="%" type="number" min={0} max={100} step={0.1} onChange={(value) => updateNumericVital('spo2', value)} />
-                <Field label="Đường huyết" value={vitalSigns.bloodGlucose} unit="mg/dL" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('bloodGlucose', value)} />
-                <Field label="Nhiệt độ" value={vitalSigns.temperature} unit="°C" type="number" min={25} max={50} step={0.1} onChange={(value) => updateNumericVital('temperature', value)} />
-                <Field label="Chiều cao" value={vitalSigns.height} unit="cm" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('height', value)} />
-                <Field label="Cân nặng" value={vitalSigns.weight} unit="kg" required type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('weight', value)} />
-                <Field label="Vòng eo" value={vitalSigns.waist} unit="cm" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('waist', value)} />
-                <Field label="BMI" value={vitalSigns.bmi} type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('bmi', value)} />
-                <Field label="BSA" value={vitalSigns.bsa} type="number" min={0} step={0.01} onChange={(value) => updateNumericVital('bsa', value)} />
-                <Field label="HbA1c" value={vitalSigns.hba1c} unit="%" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('hba1c', value)} />
+                <Field label="Mạch" value={vitalSigns.pulse} unit="lần/phút" />
+                <Field label="Nhịp thở" value={vitalSigns.respiratoryRate} unit="lần/phút" />
+                <Field label="Huyết áp" value={vitalSigns.systolicBloodPressure !== null && vitalSigns.diastolicBloodPressure !== null ? `${vitalSigns.systolicBloodPressure} / ${vitalSigns.diastolicBloodPressure}` : ''} unit="mmHg" />
+                <Field label="SpO₂" value={vitalSigns.spo2} unit="%" />
+                <Field label="Đường huyết" value={vitalSigns.bloodGlucose} unit="mg/dL" />
+                <Field label="Nhiệt độ" value={vitalSigns.temperature} unit="°C" />
+                <Field label="Chiều cao" value={vitalSigns.height} unit="cm" />
+                <Field label="Cân nặng" value={vitalSigns.weight} unit="kg" required />
+                <Field label="Vòng eo" value={vitalSigns.waist} unit="cm" />
+                <Field label="BMI" value={vitalSigns.bmi} />
+                <Field label="BSA" value={vitalSigns.bsa} />
+                <Field label="HbA1c" value={vitalSigns.hba1c} unit="%" />
               </div>
 
               <div className={styles.treatmentPane}>
                 <div className={styles.treatmentSubheading}><UserRoundCheck size={15} /><span>Thông tin điều trị</span></div>
                 <div className={styles.checkRow}>
                   <label>
-                    <input
-                      type="checkbox"
-                      checked={vitalSigns.pregnancyWeeks !== null}
-                      onChange={(event) => setVitalEdits((current) => ({ ...current, pregnancyWeeks: event.target.checked ? (current.pregnancyWeeks ?? 1) : null }))}
-                    />
+                    <input type="checkbox" checked={vitalSigns.pregnancyWeeks !== null} readOnly />
                     <span>Mang thai/nghi ngờ thai</span>
-                    <select
-                      value={vitalSigns.pregnancyWeeks ?? ''}
-                      disabled={vitalSigns.pregnancyWeeks === null}
-                      onChange={(event) => updateNumericVital('pregnancyWeeks', event.target.value)}
-                      aria-label="Số tuần thai"
-                    >
-                      <option value="">Tuần</option>
-                      {Array.from({ length: 42 }, (_, index) => index + 1).map((week) => <option key={week} value={week}>{week} tuần</option>)}
+                    <select value={vitalSigns.pregnancyWeeks ?? ''} onChange={() => undefined} aria-label="Số tuần thai">
+                      <option value="">Tuần</option><option value="38">38 tuần</option>
                     </select>
                   </label>
-                  <label><input type="checkbox" checked={vitalSigns.breastfeeding} onChange={(event) => setVitalEdits((current) => ({ ...current, breastfeeding: event.target.checked }))} /><span>Cho con bú</span></label>
+                  <label><input type="checkbox" checked={vitalSigns.breastfeeding} readOnly /><span>Cho con bú</span></label>
                 </div>
 
                 <div className={styles.treatmentFields}>
                   <label className={styles.field}>
                     <span>Bác sĩ điều trị<b>*</b></span>
-                    <input value={personnelEdits.doctor} onChange={(event) => setPersonnelEdits((current) => ({ ...current, doctor: event.target.value }))} aria-label="Bác sĩ điều trị" />
+                    <select value={patient.doctor} onChange={() => undefined}><option>{patient.doctor}</option></select>
                   </label>
                   <label className={styles.field}>
                     <span>Điều dưỡng 1</span>
-                    <input value={personnelEdits.nurseOne} onChange={(event) => setPersonnelEdits((current) => ({ ...current, nurseOne: event.target.value }))} aria-label="Điều dưỡng 1" />
+                    <select value={patient.nurseOne} onChange={() => undefined}><option>{patient.nurseOne}</option></select>
                   </label>
                   <label className={styles.field}>
                     <span>Điều dưỡng 2</span>
-                    <input value={personnelEdits.nurseTwo === 'Chọn...' ? '' : personnelEdits.nurseTwo} placeholder="Chọn hoặc nhập tên" onChange={(event) => setPersonnelEdits((current) => ({ ...current, nurseTwo: event.target.value }))} aria-label="Điều dưỡng 2" />
+                    <select value={patient.nurseTwo} onChange={() => undefined}><option>{patient.nurseTwo}</option></select>
                   </label>
                 </div>
               </div>
@@ -1383,12 +1141,17 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
           Kiểm tra hồ sơ (AI)
         </button>
         <button type="button" className={styles.saveButton} onClick={() => notify('Đã lưu hồ sơ khám')}><Save size={16} />Lưu</button>
-        <button type="button" className={styles.cancelButton} onClick={resetClinicalEdits}><X size={16} />Hủy</button>
+        <button type="button" className={styles.cancelButton} onClick={() => notify('Đã hủy thay đổi')}><X size={16} />Hủy</button>
       </footer>
-      {aiCheck.open && !aiCheckMinimized && <AiCheckModal
+      {aiCheck.open && <AiCheckModal
         state={aiCheck}
         patient={editablePatient}
-        notes={currentNotes}
+        notes={{
+          clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+          treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+          diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+          counselingRecord: counselingText,
+        }}
         onEditNotes={(field, value) => {
           // Biên bản tư vấn quản lý bằng state (modal + AI generate), các ô còn lại là textarea uncontrolled.
           if (field === 'counselingRecord') {
@@ -1398,39 +1161,22 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
           const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
           if (refs[field].current) refs[field].current.value = value
         }}
+        onAppendNotes={(field, value) => {
+          if (field === 'counselingRecord') {
+            setCounselingText((current) => `${current}${current ? '\n' : ''}${value}`)
+            return
+          }
+          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
+          const target = refs[field].current
+          if (target) target.value = `${target.value}${target.value ? '\n' : ''}${value}`
+        }}
         onEditVitals={(field, value) => setVitalEdits((current) => {
           const next = { ...current, [field]: value }
           const bmi = next.height && next.weight ? Number((next.weight / ((next.height / 100) ** 2)).toFixed(1)) : null
           return { ...next, bmi }
         })}
-        onApproveCriterion={approveCriterion}
-        onMinimize={() => setAiCheckMinimized(true)}
-        onClose={() => { setAiCheck((state) => ({ ...state, open: false })); setAiCheckMinimized(false) }}
+        onClose={() => setAiCheck((state) => ({ ...state, open: false }))}
       />}
-      {aiCheck.open && aiCheckMinimized && createPortal(
-        <button
-          ref={aiBubbleRef}
-          type="button"
-          className={styles.aiFloatingBubble}
-          style={aiBubblePosition ? { left: aiBubblePosition.x, top: aiBubblePosition.y, right: 'auto', bottom: 'auto' } : undefined}
-          onPointerDown={startAiBubbleDrag}
-          onPointerMove={moveAiBubble}
-          onPointerUp={finishAiBubbleDrag}
-          onPointerCancel={cancelAiBubbleDrag}
-          onClick={openAiCheckFromBubble}
-          aria-label="Trợ lý Tháp Rùa. Kéo để di chuyển, bấm để mở kiểm tra hồ sơ"
-          title="Kéo để di chuyển · Bấm để mở"
-        >
-          <span className={styles.aiBubbleMark}><img src={thapRuaMark} alt="" aria-hidden="true" /></span>
-          {aiCheck.loading && <LoaderCircle size={15} className={`${styles.aiSpinner} ${styles.aiBubbleLoader}`} />}
-          {aiCheck.data && (
-            <em className={aiCheck.data.result.khong_dat.length === 0 ? styles.aiBubbleComplete : ''}>
-              {aiCheck.data.result.khong_dat.length === 0 ? <CircleCheck size={13} /> : aiCheck.data.result.khong_dat.length}
-            </em>
-          )}
-        </button>,
-        document.body,
-      )}
     </section>
   )
 }

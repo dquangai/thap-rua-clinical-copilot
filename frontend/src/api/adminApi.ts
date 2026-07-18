@@ -1,7 +1,6 @@
 import { ApiError } from './authApi'
-import { API_BASE_URL } from './config'
 
-const BASE = `${API_BASE_URL}/admin`
+const BASE = `${(import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')}/admin`
 
 async function request<T>(path: string, token: string | null, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {

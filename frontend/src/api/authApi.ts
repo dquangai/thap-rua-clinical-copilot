@@ -1,6 +1,6 @@
 import type { AuthTokens, AuthUser } from '../types/auth'
-import { API_BASE_URL } from './config'
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
 const AUTH_URL = `${API_BASE_URL}/auth`
 
 type ApiErrorPayload = {
