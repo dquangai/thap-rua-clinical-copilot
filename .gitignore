@@ -27,3 +27,6 @@ results/
 .DS_Store
 .idea/
 .vscode/
+
+# Generated exports may contain sensitive clinical information
+output/

@@ -50,67 +50,8 @@ class ClinicalRecordUpdate(ApiModel):
     signed_at: datetime | None = None
 
 
-<<<<<<< HEAD
 class ClinicalRecord(ClinicalRecordCreate):
     id: str
     patient_id: str
     created_at: datetime
     updated_at: datetime
-=======
-class ClinicalRecordImport(ApiModel):
-    record_id: str = Field(min_length=1, max_length=100)
-    visit: dict[str, Any]
-    patient: dict[str, Any]
-    vital_signs: dict[str, Any]
-    clinical_note: dict[str, Any]
-    diagnosis: dict[str, Any]
-    doctor: str = Field(min_length=1)
-    signed_at: datetime
-
-
-class ClinicalRecordImportResult(ApiModel):
-    encounter_id: UUID
-
-
-class LoginRequest(ApiModel):
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=200)
-
-
-class RefreshTokenRequest(ApiModel):
-    refresh_token: str = Field(min_length=1)
-
-
-class AuthTokens(ApiModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    expires_at: int | None = None
-
-
-class AuthUser(ApiModel):
-    id: UUID
-    email: EmailStr | None = None
-    role: str = "DOCTOR"
-    active: bool = True
-
-
-class AdminUserCreate(ApiModel):
-    email: EmailStr
-    full_name: str = Field(min_length=1, max_length=200)
-    password: str = Field(min_length=8, max_length=200)
-    department_id: UUID | None = None
-    role: str = Field(default="DOCTOR", pattern="^(ADMIN|DOCTOR)$")
-
-
-class AdminUserUpdate(ApiModel):
-    full_name: str | None = Field(default=None, min_length=1, max_length=200)
-    department_id: UUID | None = None
-    role: str | None = Field(default=None, pattern="^(ADMIN|DOCTOR)$")
-    active: bool | None = None
-
-
-class AdminRecordAction(ApiModel):
-    reason: str = Field(min_length=3, max_length=500)
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
