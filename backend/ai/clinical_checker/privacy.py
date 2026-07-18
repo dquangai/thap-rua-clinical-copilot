@@ -12,7 +12,7 @@ NESTED_ALLOWLIST = {
     "patient": {"age", "gender"},
     "visit": {"reason", "department", "clinic"},
     "vital_signs": None,
-    "clinical_note": {"dien_bien", "huong_xu_tri"},
+    "clinical_note": {"dien_bien", "huong_xu_tri", "tu_van"},
     "diagnosis": {"icd10", "mo_ta"},
 }
 

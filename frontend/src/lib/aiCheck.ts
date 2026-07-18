@@ -11,6 +11,7 @@ export interface CheckerNotes {
   clinicalProgress: string
   treatmentPlan: string
   diagnosisSummary: string
+  counselingRecord: string
 }
 
 // Chỉ gửi minimum-necessary theo allowlist của backend/ai/clinical_checker/privacy.py:
@@ -48,6 +49,7 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
     clinical_note: {
       dien_bien: notes.clinicalProgress,
       huong_xu_tri: notes.treatmentPlan,
+      tu_van: notes.counselingRecord,
     },
     diagnosis: {
       icd10: patient.diagnoses.primaryCode,

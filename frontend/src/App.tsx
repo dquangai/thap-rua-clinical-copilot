@@ -367,6 +367,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const progressRef = useRef<HTMLTextAreaElement>(null)
   const planRef = useRef<HTMLTextAreaElement>(null)
   const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
+  const counselingRef = useRef<HTMLTextAreaElement>(null)
   const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
 
   const runAiCheck = async () => {
@@ -376,6 +377,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
         clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
         treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
         diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+        counselingRecord: counselingRef.current?.value ?? patient.counselingRecord,
       })
       const data = await checkClinicalRecord(record)
       setAiCheck((state) => ({ ...state, loading: false, data }))
@@ -435,6 +437,22 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
               </div>
               <textarea key={`${patient.medicalId}-plan`} ref={planRef} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
+            </div>
+          </article>
+
+          <article className={`${styles.clinicalCard} ${styles.planCard}`}>
+            <header className={styles.cardHeader}><FileText size={16} /><h3>Biên bản tư vấn</h3></header>
+            <div className={styles.noteBody}>
+              <div className={styles.noteTools}>
+                <button type="button" onClick={() => notify('Đã load mẫu tư vấn')}><ListRestart size={14} />Load mẫu</button>
+              </div>
+              <textarea
+                key={`${patient.medicalId}-counseling`}
+                ref={counselingRef}
+                defaultValue={patient.counselingRecord}
+                placeholder="Bắt buộc với bệnh nhân có bệnh lý: ghi nguy cơ đã tư vấn, kế hoạch theo dõi, dặn dò dấu hiệu cần khám ngay. Dùng ngôn ngữ cân bằng, không gây hoang mang."
+                aria-label="Biên bản tư vấn"
+              />
             </div>
           </article>
 

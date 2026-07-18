@@ -42,6 +42,7 @@ export interface PatientRecord {
   vitalSigns: VitalSigns
   clinicalProgress: string
   treatmentPlan: string
+  counselingRecord: string
   doctor: string
   nurseOne: string
   nurseTwo: string

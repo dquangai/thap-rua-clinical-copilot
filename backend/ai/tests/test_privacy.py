@@ -19,6 +19,15 @@ class PrivacyTests(unittest.TestCase):
         self.assertNotIn("NGUYEN THI A", str(safe))
         self.assertEqual(find_residual_pii(safe), [])
 
+    def test_keeps_counseling_note_for_compliance_check(self):
+        record = {
+            "patient": {"age": 32, "gender": "Nu"},
+            "clinical_note": {"dien_bien": "x", "huong_xu_tri": "y",
+                              "tu_van": "Da tu van nguy co DTD thai ky, ke hoach theo doi."},
+        }
+        safe = build_minimum_necessary_record(record)
+        self.assertIn("tu_van", safe["clinical_note"])
+
 
 if __name__ == "__main__":
     unittest.main()
