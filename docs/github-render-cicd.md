@@ -63,7 +63,6 @@ Repository không được chứa conflict marker:
 | `LLM_MODEL` | Không | Model team đã phê duyệt |
 | `LLM_BASE_URL` | Không | Endpoint OpenAI-compatible nếu có |
 | `PII_FAIL_CLOSED` | Không | `true` |
-| `JWT_SECRET` | Có | Secret ngẫu nhiên đủ mạnh nếu module auth sử dụng |
 
 Không đưa secret vào `render.yaml`, GitHub Actions, source code hoặc file `.env.example`. Secret phải nhập tại **Render Dashboard → Environment**.
 
@@ -181,9 +180,6 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: JWT_SECRET
-        sync: false
-
   - type: web
     name: thap-rua-clinical-web
     runtime: static

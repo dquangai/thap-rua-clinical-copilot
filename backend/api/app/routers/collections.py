@@ -29,6 +29,8 @@ ALLOWED_COLLECTIONS = (
     "lab_test_catalog",
     "patients",
     "practitioners",
+    "rules_kham_thai",
+    "rules_tu_van",
     "vital_signs",
 )
 ALLOWED_COLLECTION_SET = frozenset(ALLOWED_COLLECTIONS)
