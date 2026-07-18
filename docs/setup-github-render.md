@@ -1,12 +1,12 @@
 # Hướng dẫn thiết lập GitHub CI/CD và Render
 
-Tài liệu này liệt kê các việc cần làm để đưa **Tháp Rùa Clinical Copilot** từ nhánh `staging` lên production trên Render.
+Tài liệu này liệt kê các việc cần làm để CI và Render triển khai trực tiếp **Tháp Rùa Clinical Copilot** từ nhánh `staging`.
 
 ## 1. Trạng thái hiện tại
 
 - CI được định nghĩa tại `.github/workflows/ci.yml`.
 - Render Blueprint được định nghĩa tại `render.yaml`.
-- Production sử dụng branch `main`.
+- Render sử dụng trực tiếp branch `staging`.
 - CI chạy khi push vào `staging`, `main` hoặc tạo pull request vào `main`.
 - Render chỉ tự động deploy khi GitHub CI thành công.
 - Backend có `/health` để kiểm tra tiến trình và `/ready` để ping MongoDB.
@@ -102,48 +102,45 @@ Nếu có conflict, xử lý conflict, chạy lại build/test rồi commit. Sau
 git push origin staging
 ```
 
-## 4. Tạo Pull Request vào main
+## 4. Luồng deploy từ staging
 
-Trên GitHub:
+Sau khi push lên `staging`:
 
-1. Mở repository `dquangai/thap-rua-clinical-copilot`.
-2. Chọn **Pull requests → New pull request**.
-3. Chọn:
-   - Base: `main`
-   - Compare: `staging`
-4. Tạo pull request.
-5. Chờ các check sau thành công:
+1. Mở tab **Actions** của repository `dquangai/thap-rua-clinical-copilot`.
+2. Chọn workflow **CI** của commit vừa push.
+3. Chờ các check sau thành công:
    - `Conflict markers`
    - `Backend tests`
    - `Frontend build`
-6. Review thay đổi rồi merge vào `main`.
+4. Render nhận trạng thái checks của commit trên `staging`.
+5. Khi tất cả checks pass, Render tự động deploy đúng commit đó.
 
-Không push trực tiếp vào `main` sau khi branch protection đã được bật.
+Pull request `staging → main` chỉ dùng khi muốn phát hành hoặc đồng bộ nhánh ổn định; không phải điều kiện để deploy môi trường Render hiện tại.
 
-## 5. Bật Branch Protection cho main
+## 5. Bật Branch Protection cho staging
 
 Trong GitHub repository:
 
 1. Mở **Settings → Rules → Rulesets**.
-2. Tạo branch ruleset áp dụng cho `main`.
-3. Bật **Require a pull request before merging**.
+2. Tạo branch ruleset áp dụng cho `staging`.
+3. Nếu team vẫn cần push trực tiếp để deploy, không bật **Require a pull request before merging** cho `staging`.
 4. Bật **Require status checks to pass**.
 5. Chọn ba status check:
    - `Conflict markers`
    - `Backend tests`
    - `Frontend build`
 6. Bật **Require branches to be up to date before merging** nếu muốn CI luôn chạy trên base mới nhất.
-7. Chặn force push và deletion đối với `main`.
+7. Chặn force push và deletion đối với `staging`.
 
 ## 6. Tạo Render Blueprint
 
-Thực hiện sau khi `render.yaml` đã có trên branch `main`:
+Thực hiện sau khi `render.yaml` đã có trên branch `staging`:
 
 1. Đăng nhập tại <https://dashboard.render.com>.
 2. Chọn **New → Blueprint**.
 3. Kết nối GitHub nếu Render chưa được cấp quyền.
 4. Chọn repository `dquangai/thap-rua-clinical-copilot`.
-5. Chọn branch `main`.
+5. Chọn branch `staging`.
 6. Render đọc `render.yaml` và đề xuất hai service:
    - `thap-rua-clinical-api`
    - `thap-rua-clinical-web`
@@ -216,7 +213,7 @@ Sau đó redeploy backend để cập nhật CORS.
 
 ## 10. Triển khai và kiểm tra
 
-Render được cấu hình chỉ deploy sau khi GitHub checks pass. Nếu cần chạy lại thủ công:
+Render được cấu hình chỉ deploy commit trên `staging` sau khi GitHub checks pass. Nếu cần chạy lại thủ công:
 
 1. Mở service trên Render.
 2. Chọn **Manual Deploy → Deploy latest commit**.
@@ -270,9 +267,9 @@ Không rollback database bằng cách xóa collection. Mọi thay đổi dữ li
 - [ ] GitHub token có quyền `workflow`.
 - [ ] `.github/workflows/ci.yml` đã được push.
 - [ ] CI trên `staging` thành công.
-- [ ] Pull request `staging → main` đã được merge.
-- [ ] Branch protection cho `main` đã bật.
-- [ ] Render Blueprint theo dõi branch `main`.
+- [ ] CI trên commit mới nhất của `staging` đã pass.
+- [ ] Branch protection cho `staging` đã bật.
+- [ ] Render Blueprint theo dõi branch `staging`.
 - [ ] Backend environment variables đã nhập đủ.
 - [ ] Frontend `VITE_API_BASE_URL` đúng.
 - [ ] Backend `FRONTEND_ORIGIN` đúng.

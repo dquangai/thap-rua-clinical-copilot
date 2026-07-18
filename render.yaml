@@ -2,7 +2,7 @@ services:
   - type: web
     name: thap-rua-clinical-api
     runtime: python
-    branch: main
+    branch: staging
     region: singapore
     buildCommand: pip install -r backend/api/requirements.txt
     startCommand: cd backend/api && uvicorn app.main:app --host 0.0.0.0 --port $PORT
@@ -43,7 +43,7 @@ services:
   - type: web
     name: thap-rua-clinical-web
     runtime: static
-    branch: main
+    branch: staging
     buildCommand: npm ci && npm run build
     staticPublishPath: frontend/dist
     autoDeployTrigger: checksPass
