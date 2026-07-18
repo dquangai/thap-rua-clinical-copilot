@@ -949,6 +949,7 @@ const APPOINTMENT_LOAD_LABELS: Record<string, string> = {
 }
 
 const APPOINTMENT_SOURCE_LABELS: Record<string, string> = {
+  ai: 'AI phân tích theo hồ sơ',
   treatment_plan: 'theo hướng xử trí',
   pregnancy_weeks: 'theo tuổi thai',
   default: 'theo lịch khám định kỳ',
@@ -984,7 +985,7 @@ function AppointmentModal({
           {loading && (
             <div className={styles.aiLoading}>
               <LoaderCircle size={22} className={styles.aiSpinner} />
-              <p>Đang tính ngày hẹn và tải phòng khám...</p>
+              <p>AI đang phân tích hồ sơ (đã ẩn thông tin định danh) để đề xuất lịch tái khám...</p>
             </div>
           )}
           {!loading && error && <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>}
@@ -1002,7 +1003,10 @@ function AppointmentModal({
               <p className={styles.apptIntro}>
                 Hẹn sau <strong>{data.interval_days} ngày</strong> ({APPOINTMENT_SOURCE_LABELS[data.interval_source]}),
                 ngày lý tưởng <strong>{formatAppointmentDate(data.ideal_date)}</strong>.
-                Hệ thống đề xuất ngày cân bằng tải — bác sĩ chọn và xác nhận:
+              </p>
+              {data.reason && <p className={styles.apptReason}>{data.reason}</p>}
+              <p className={styles.apptIntro}>
+                Các ngày dưới đây đã cân bằng theo tải phòng khám — bác sĩ chọn và xác nhận:
               </p>
               <div className={styles.apptList}>
                 {data.candidates.map((candidate) => {
@@ -1216,10 +1220,13 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
     const forPatient = patient.medicalId
     setAppointment({ open: true, loading: true, error: '', data: null, selected: '', booking: false, bookedDate: '' })
     try {
-      const data = await suggestFollowUp({
+      const record = buildCheckerRecord(patient, {
+        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
         treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
-        pregnancyWeeks: vitalSigns.pregnancyWeeks,
+        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+        counselingRecord: counselingText,
       })
+      const data = await suggestFollowUp({ record })
       if (patientIdRef.current !== forPatient) return
       const recommended = data.candidates.find((candidate) => candidate.recommended)
       setAppointment((state) => ({ ...state, loading: false, data, selected: recommended?.date ?? '' }))

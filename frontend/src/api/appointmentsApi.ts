@@ -11,7 +11,8 @@ export type AppointmentCandidate = {
 
 export type SuggestFollowUpResponse = {
   interval_days: number
-  interval_source: 'treatment_plan' | 'pregnancy_weeks' | 'default'
+  interval_source: 'ai' | 'treatment_plan' | 'pregnancy_weeks' | 'default'
+  reason: string
   ideal_date: string
   capacity: number
   candidates: AppointmentCandidate[]
@@ -42,11 +43,9 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return response.json()
 }
 
-export function suggestFollowUp(input: { treatmentPlan: string; pregnancyWeeks: number | null }) {
-  return post<SuggestFollowUpResponse>('/appointments/suggest', {
-    treatment_plan: input.treatmentPlan,
-    pregnancy_weeks: input.pregnancyWeeks,
-  })
+export function suggestFollowUp(input: { record: unknown }) {
+  // Gửi hồ sơ tối thiểu (đã theo allowlist) để AI quyết định khoảng tái khám cho đúng ca.
+  return post<SuggestFollowUpResponse>('/appointments/suggest', { record: input.record })
 }
 
 export function bookFollowUp(input: { medicalId: string; patientName: string; date: string; note?: string }) {

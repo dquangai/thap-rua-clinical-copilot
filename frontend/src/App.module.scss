@@ -938,6 +938,17 @@
   color: #2c414c;
 }
 
+.apptReason {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--teal-600);
+  border-radius: 0 7px 7px 0;
+  background: #f2f8f5;
+  color: #1d5c38;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 .apptList {
   display: grid;
   gap: 8px;

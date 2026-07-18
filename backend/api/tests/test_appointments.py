@@ -49,6 +49,39 @@ def test_suggest_days_never_recommends_full_day():
     assert full_days and all(not c.recommended for c in full_days)
 
 
+def test_suggest_uses_ai_interval_for_record(monkeypatch):
+    monkeypatch.setattr(appointments_router, "_database_or_none", lambda: None)
+    monkeypatch.setattr(appointments_router, "_memory_appointments", [])
+    monkeypatch.setattr(appointments_router, "_ai_interval", lambda safe_record: (5, "ĐTĐTK cần theo dõi sát"))
+    client = TestClient(app)
+
+    suggested = client.post(
+        "/api/v1/appointments/suggest",
+        json={"record": {"clinical_note": {"huong_xu_tri": "Tái khám sau 1 tuần"}, "diagnosis": {"mo_ta": "THAI 38 TUẦN"}}},
+    )
+    assert suggested.status_code == 200
+    body = suggested.json()
+    assert body["interval_days"] == 5
+    assert body["interval_source"] == "ai"
+    assert body["reason"] == "ĐTĐTK cần theo dõi sát"
+
+
+def test_suggest_record_falls_back_to_plan_when_ai_unavailable(monkeypatch):
+    monkeypatch.setattr(appointments_router, "_database_or_none", lambda: None)
+    monkeypatch.setattr(appointments_router, "_memory_appointments", [])
+    monkeypatch.setattr(appointments_router, "_ai_interval", lambda safe_record: None)
+    client = TestClient(app)
+
+    suggested = client.post(
+        "/api/v1/appointments/suggest",
+        json={"record": {"clinical_note": {"huong_xu_tri": "Tái khám lại sau 4 ngày"}, "diagnosis": {"mo_ta": "THAI 38 TUẦN"}}},
+    )
+    assert suggested.status_code == 200
+    body = suggested.json()
+    assert body["interval_days"] == 4
+    assert body["interval_source"] == "treatment_plan"
+
+
 def test_suggest_and_book_api_flow(monkeypatch):
     monkeypatch.setattr(appointments_router, "_database_or_none", lambda: None)
     monkeypatch.setattr(appointments_router, "_memory_appointments", [])
