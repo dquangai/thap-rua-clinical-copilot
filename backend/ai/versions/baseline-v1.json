@@ -1,0 +1,12 @@
+{
+  "pipeline_version": "baseline-v1",
+  "status": "baseline",
+  "stages": ["allowlist", "redact", "pii_scan", "single_llm_call", "schema_parse", "metadata_log"],
+  "prompt_version": "1.0.0",
+  "privacy_policy": "minimum-necessary + fail-closed",
+  "metrics": [
+    "latency_ms", "input_tokens", "output_tokens", "total_tokens", "estimated_cost_usd",
+    "status", "pii_scan_passed", "provider", "model", "prompt_sha256", "rules_sha256"
+  ],
+  "notes": "Ket qua chi la suggestion va bat buoc human review. Khong luu raw prompt/record trong telemetry."
+}

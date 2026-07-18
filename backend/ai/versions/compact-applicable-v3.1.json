@@ -1,0 +1,11 @@
+{
+  "pipeline_version": "compact-applicable-v3.1",
+  "parent_version": "compact-output-v3",
+  "status": "candidate",
+  "result_contract": {
+    "dat_ids": "Applicable criteria that passed; IDs only",
+    "exceptions": "Applicable KHONG_DAT or THIEU_DU_LIEU criteria with evidence and notes",
+    "omitted": "Rules outside the detected trimester and criteria classified KHONG_AP_DUNG"
+  },
+  "provider_contract_note": "khong_ap_dung_ids remains internal for coverage validation and is removed before writing the result file."
+}

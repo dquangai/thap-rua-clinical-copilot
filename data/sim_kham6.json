@@ -1,0 +1,38 @@
+{
+  "record_id": "SIM-006",
+  "visit": {
+    "visit_code": "KB170720261420",
+    "visit_datetime": "2026-07-17T14:20:00",
+    "reason": "KHÁM THAI ĐỊNH KÌ",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "ĐẶNG THỊ THU HIỀN",
+    "age": 38,
+    "gender": "Nữ",
+    "phone": "0977453218",
+    "address": "KP4, Phường Hoà Thành, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": 86,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": 138,
+    "huyet_ap_tam_truong_mmhg": 88,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 150,
+    "can_nang_kg": 62,
+    "bmi": 27.56,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 1001\nDự sanh ngày: 24/01/2027  theo siêu âm thai 8 tuần\nTiền căn:  Nội - Ngoại khoa: tăng huyết áp mạn 2 năm, đang uống thuốc\nSản khoa: tiền sản giật thai lần 1 (2018), mổ lấy thai 36 tuần\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa:\nXét Nghiệm:\nSàng lọc bé: Double test NCT\nSàng lọc nguy cơ TSG: NGUY CƠ CAO (FMF 1/45)\nSàng lọc mẹ: CTM bình thường, nhóm máu AB+, HIV âm tính, HBsAg âm tính,\ngiang mai âm tính, Rubella IgG (+) IgM (-)\nĐường huyết đói: 92 mg/dL\nPLGF:\nTest dung nạp đường: (HbA1c:)\nGBS:\nSiêu Âm:\nĐộ mờ da gáy: 1.5 mm\nCRL: 64 mm, tim thai (+), 01 thai trong buồng tử cung\nDoppler ĐM tử cung: trở kháng bình thường\nHình thái học :\nSiêu âm tim thai qua thành bụng:\nKhám hiện tại:\nTỉnh, niêm hồng\nBụng mềm, không phù\nÂm đạo hiện không ra huyết",
+    "huong_xu_tri": "TOA VỀ: SẮT 60MG 1V/NGÀY, ACID FOLIC 1000MCG 1V/NGÀY, CANXI 1500MG/NGÀY\nTÁI KHÁM SAU 04 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ"
+  },
+  "diagnosis": {
+    "icd10": "Z35",
+    "mo_ta": "THAI 12 TUẦN 05 NGÀY"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T14:55:00"
+}

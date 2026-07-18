@@ -1,0 +1,38 @@
+{
+  "record_id": "SIM-002",
+  "visit": {
+    "visit_code": "KB170720260815",
+    "visit_datetime": "2026-07-17T08:15:00",
+    "reason": "KHÁM THAI ĐỊNH KÌ",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "TRẦN NGỌC BẢO TRÂM",
+    "age": 30,
+    "gender": "Nữ",
+    "phone": "0917845632",
+    "address": "Ấp Trường Lưu, Xã Trường Đông, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": 82,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": 110,
+    "huyet_ap_tam_truong_mmhg": 70,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 160,
+    "can_nang_kg": 58,
+    "bmi": 22.66,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 1001\nDự sanh ngày: 22/11/2026  theo siêu âm thai 9 tuần\nTiền căn:  Nội - Ngoại khoa: không\nSản khoa: mổ lấy thai 2022 (thai 39 tuần, bé 3200g)\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa:\nXét Nghiệm:\nSàng lọc bé: NIPT NCT\nSàng lọc nguy cơ TSG: NCT\nSàng lọc mẹ: nhóm máu O+, HIV âm tính, HBsAg âm tính, giang mai âm tính,\nRubella IgG (+) IgM (-)\nTest dung nạp đường: (HbA1c:)\nGBS:\nSiêu Âm:\nĐộ mờ da gáy: 1.2 mm\nHình thái học : chưa\nSiêu âm tim thai qua thành bụng:\nKhám hiện tại:\nTỉnh, sinh hiệu ổn\nNiêm hồng, bụng mềm\nTim thai (148 l/ph)\nBCTC: 19 cm\nÂm đạo hiện không ra huyết",
+    "huong_xu_tri": "TOA VỀ\nTÁI KHÁM SAU 08 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ"
+  },
+  "diagnosis": {
+    "icd10": "Z34",
+    "mo_ta": "THAI 21 TUẦN 05 NGÀY"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T08:50:00"
+}

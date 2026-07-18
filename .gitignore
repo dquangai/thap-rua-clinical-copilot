@@ -1,13 +1,28 @@
-node_modules/
-dist/
-coverage/
+# Secrets (commit only the example files)
 .env
 .env.*
 !.env.example
-.DS_Store
-.vscode/
+!**/.env.example
+
+# Python
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
+venv/
 
+# Node
+node_modules/
+dist/
+
+# AI checker runtime artifacts may contain clinical information
+artifacts/
+backend/ai/artifacts/
+results/
+*.jsonl
+!ai-log/codex-session.sanitized.jsonl
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

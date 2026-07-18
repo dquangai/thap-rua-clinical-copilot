@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -6,6 +6,7 @@ import {
   BarChart3,
   Bell,
   CalendarDays,
+  CircleCheck,
   ChevronDown,
   ChevronsLeft,
   ChevronsRight,
@@ -23,6 +24,7 @@ import {
   House,
   Info,
   ListRestart,
+  LoaderCircle,
   LogOut,
   Megaphone,
   Menu,
@@ -32,19 +34,26 @@ import {
   Save,
   Search,
   Settings,
+  ShieldCheck,
   Stethoscope,
   Syringe,
+  TriangleAlert,
   UserRoundCheck,
   Users,
   X,
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
+import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
+import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
+
+// Bypass đăng nhập khi test local chưa có Supabase; bật bằng VITE_AUTH_BYPASS=true trong frontend/.env.local
+const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
 
 const navigation = [
   { label: 'Tổng quan', icon: House, path: '/tong-quan' },
@@ -281,9 +290,102 @@ function SectionTitle({ icon: Icon, title, trailing }: { icon: typeof Info; titl
   )
 }
 
+type AiCheckState = {
+  open: boolean
+  loading: boolean
+  error: string
+  data: AiCheckResponse | null
+}
+
+function AiCheckModal({ state, onClose }: { state: AiCheckState; onClose: () => void }) {
+  const { loading, error, data } = state
+  const result = data?.result
+  const catalog = data?.criteria_catalog ?? {}
+  const failures = result?.khong_dat ?? []
+  const passed = result?.ket_luan === 'DAT'
+  const criticalSet = new Set(result?.vi_pham_critical ?? [])
+
+  return (
+    <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Kết quả kiểm tra hồ sơ bằng AI">
+      <div className={styles.aiModal}>
+        <header className={styles.aiModalHead}>
+          <div><ShieldCheck size={17} /><h2>Kiểm tra tuân thủ hồ sơ (AI)</h2></div>
+          <button type="button" onClick={onClose} aria-label="Đóng kết quả kiểm tra"><X size={16} /></button>
+        </header>
+        <div className={styles.aiModalBody}>
+          {loading && (
+            <div className={styles.aiLoading}>
+              <LoaderCircle size={22} className={styles.aiSpinner} />
+              <p>Đang gửi hồ sơ (đã ẩn thông tin định danh) đến AI để kiểm tra...</p>
+            </div>
+          )}
+          {!loading && error && (
+            <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>
+          )}
+          {!loading && result && (
+            <>
+              <div className={`${styles.aiVerdict} ${passed ? styles.aiVerdictPass : styles.aiVerdictFail}`}>
+                {passed ? <CircleCheck size={24} /> : <TriangleAlert size={24} />}
+                <strong>{passed ? 'ĐẠT' : 'KHÔNG ĐẠT'}</strong>
+              </div>
+              {failures.length > 0 && (
+                <ul className={styles.aiExceptionList}>
+                  {failures.map((failure) => (
+                    <li key={failure.item_id}>
+                      <div className={styles.aiExceptionHead}>
+                        <strong>{failure.item_id}</strong>
+                        {criticalSet.has(failure.item_id) && (
+                          <span className={`${styles.aiBadge} ${styles.aiBadgeFail}`}>Nghiêm trọng</span>
+                        )}
+                      </div>
+                      {catalog[failure.item_id] && <p className={styles.aiCriterion}>{catalog[failure.item_id]}</p>}
+                      {failure.ly_do && <p className={styles.aiNote}>{failure.ly_do}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {result.khuyen_nghi && (
+                <div className={styles.aiRecommendation}>
+                  <strong>Khuyến nghị</strong>
+                  <p>{result.khuyen_nghi}</p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <footer className={styles.aiDisclaimer}>
+          Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế.
+        </footer>
+      </div>
+    </div>
+  )
+}
+
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
   const vitalSigns = patient.vitalSigns
+  const progressRef = useRef<HTMLTextAreaElement>(null)
+  const planRef = useRef<HTMLTextAreaElement>(null)
+  const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
+  const counselingRef = useRef<HTMLTextAreaElement>(null)
+  const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
+
+  const runAiCheck = async () => {
+    setAiCheck({ open: true, loading: true, error: '', data: null })
+    try {
+      const record = buildCheckerRecord(patient, {
+        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+        counselingRecord: counselingRef.current?.value ?? patient.counselingRecord,
+      })
+      const data = await checkClinicalRecord(record)
+      setAiCheck((state) => ({ ...state, loading: false, data }))
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Lỗi không xác định khi kiểm tra hồ sơ'
+      setAiCheck((state) => ({ ...state, loading: false, error: message }))
+    }
+  }
 
   return (
     <section className={styles.recordPanel}>
@@ -323,7 +425,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
                 <button type="button" onClick={() => notify('Đã load lịch sử')}><History size={14} />Load lịch sử</button>
               </div>
-              <textarea key={`${patient.medicalId}-progress`} defaultValue={patient.clinicalProgress} aria-label="Diễn biến bệnh" />
+              <textarea key={`${patient.medicalId}-progress`} ref={progressRef} defaultValue={patient.clinicalProgress} aria-label="Diễn biến bệnh" />
             </div>
           </article>
 
@@ -334,7 +436,23 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 <button type="button" onClick={() => notify('Đã tạo mẫu')}><ClipboardPlus size={14} />Tạo mẫu</button>
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
               </div>
-              <textarea key={`${patient.medicalId}-plan`} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
+              <textarea key={`${patient.medicalId}-plan`} ref={planRef} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
+            </div>
+          </article>
+
+          <article className={`${styles.clinicalCard} ${styles.planCard}`}>
+            <header className={styles.cardHeader}><FileText size={16} /><h3>Biên bản tư vấn</h3></header>
+            <div className={styles.noteBody}>
+              <div className={styles.noteTools}>
+                <button type="button" onClick={() => notify('Đã load mẫu tư vấn')}><ListRestart size={14} />Load mẫu</button>
+              </div>
+              <textarea
+                key={`${patient.medicalId}-counseling`}
+                ref={counselingRef}
+                defaultValue={patient.counselingRecord}
+                placeholder="Bắt buộc với bệnh nhân có bệnh lý: ghi nguy cơ đã tư vấn, kế hoạch theo dõi, dặn dò dấu hiệu cần khám ngay. Dùng ngôn ngữ cân bằng, không gây hoang mang."
+                aria-label="Biên bản tư vấn"
+              />
             </div>
           </article>
 
@@ -415,7 +533,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
               </div>
               <label className={styles.diagnosisNote}>
                 <span>Ghi chú chẩn đoán</span>
-                <textarea className={styles.diagnosisSummary} defaultValue={patient.diagnoses.summary} aria-label="Nội dung chẩn đoán" />
+                <textarea key={`${patient.medicalId}-diagnosis`} ref={diagnosisSummaryRef} className={styles.diagnosisSummary} defaultValue={patient.diagnoses.summary} aria-label="Nội dung chẩn đoán" />
               </label>
             </div>
           </article>
@@ -424,9 +542,14 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
       <footer className={styles.actionBar}>
         <button type="button" onClick={() => notify('Đang mở tiền sử dị ứng')}><HeartPulse size={16} />Tiền sử dị ứng</button>
         <button type="button" onClick={() => notify('Đang mở thông tin khám')}><Info size={16} />Xem thông tin khám</button>
+        <button type="button" className={styles.aiCheckButton} onClick={runAiCheck} disabled={aiCheck.loading}>
+          {aiCheck.loading ? <LoaderCircle size={16} className={styles.aiSpinner} /> : <ShieldCheck size={16} />}
+          Kiểm tra hồ sơ (AI)
+        </button>
         <button type="button" className={styles.saveButton} onClick={() => notify('Đã lưu hồ sơ khám')}><Save size={16} />Lưu</button>
         <button type="button" className={styles.cancelButton} onClick={() => notify('Đã hủy thay đổi')}><X size={16} />Hủy</button>
       </footer>
+      {aiCheck.open && <AiCheckModal state={aiCheck} onClose={() => setAiCheck((state) => ({ ...state, open: false }))} />}
     </section>
   )
 }
@@ -482,7 +605,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/dang-nhap" element={<LoginPage />} />
-      <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
+      <Route path="/" element={<Navigate to={AUTH_BYPASS ? '/ho-so-benh-an' : '/dang-nhap'} replace />} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )
@@ -491,6 +614,8 @@ export default function App() {
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
   const location = useLocation()
+
+  if (AUTH_BYPASS) return children
 
   if (status !== 'authenticated') {
     return <Navigate to="/dang-nhap" replace state={{ from: location }} />

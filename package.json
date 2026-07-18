@@ -9,6 +9,9 @@
     "dev:backend": "npm --workspace @thap-rua/api run dev",
     "build": "npm --workspace frontend run build",
     "preview": "npm --workspace frontend run preview",
-    "start:backend": "npm --workspace @thap-rua/api run start"
+    "start:backend": "npm --workspace @thap-rua/api run start",
+    "test:ai": "PYTHONPATH=backend/ai python -m unittest discover -s backend/ai/tests",
+    "check:ai:dry": "PYTHONPATH=backend/ai python -m clinical_checker.cli --data data/sim_kham1.json --rules rules --dry-run",
+    "check:ai": "PYTHONPATH=backend/ai python -m clinical_checker.cli --data data --rules rules --output results"
   }
 }

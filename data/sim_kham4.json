@@ -1,0 +1,38 @@
+{
+  "record_id": "SIM-004",
+  "visit": {
+    "visit_code": "KB170720261010",
+    "visit_datetime": "2026-07-17T10:10:00",
+    "reason": "KHÁM THAI ĐỊNH KÌ",
+    "department": "Khoa Sản",
+    "clinic": "Phòng khám thai"
+  },
+  "patient": {
+    "full_name": "PHẠM THÚY HẰNG",
+    "age": 29,
+    "gender": "Nữ",
+    "phone": "0965328741",
+    "address": "Ấp Long Yên, Xã Long Thành Nam, Tỉnh Tây Ninh"
+  },
+  "vital_signs": {
+    "mach_lan_phut": 84,
+    "nhiet_do_c": null,
+    "huyet_ap_tam_thu_mmhg": 118,
+    "huyet_ap_tam_truong_mmhg": 72,
+    "nhip_tho_lan_phut": null,
+    "chieu_cao_cm": 162,
+    "can_nang_kg": 66,
+    "bmi": 25.15,
+    "duong_huyet_mg_dl": null
+  },
+  "clinical_note": {
+    "dien_bien": "PARA: 0000\nDự sanh ngày: 12/08/2026  theo siêu âm thai 8.5 tuần\nTiền căn:  Nội - Ngoại khoa: không\nSản khoa: không\nQUÁ TRÌNH KHÁM THAI:\nTiêm Ngừa: 2 VAT\nXét Nghiệm:\nSàng lọc bé: NIPT NCT\nSàng lọc nguy cơ TSG: NCT\nSàng lọc mẹ: nhóm máu A+, HIV âm tính, HBsAg âm tính, giang mai âm tính,\nRubella IgG (+) IgM (-)\nTest dung nạp đường: ÂM TÍNH (OGTT lúc 26 tuần)\nGBS:\nSiêu Âm:\nĐộ mờ da gáy: 1.0 mm\nHình thái học : Bình thường\nSiêu âm tim thai qua thành bụng: bình thường\nSA Doppler lúc 32 tuần: bình thường\nKhám hiện tại:\nTỉnh, sinh hiệu ổn\nNiêm hồng, bụng mềm, không phù\nTim thai (142 l/ph)\nBCTC: 30 cm, VB: 94 cm\nSA: TT 142 l/p, ƯLCN 2600g, ối trung bình, nhau bám mặt trước nhóm 1,\ndây rốn 3 mạch máu bình thường",
+    "huong_xu_tri": "TOA VỀ\nTÁI KHÁM SAU 04 TUẦN HOẶC KHÁM NGAY KHI CÓ GÌ LẠ"
+  },
+  "diagnosis": {
+    "icd10": "Z34",
+    "mo_ta": "THAI 36 TUẦN 02 NGÀY"
+  },
+  "doctor": "BSCKI. Lê Thị Mỹ Hạnh",
+  "signed_at": "2026-07-17T10:45:00"
+}
