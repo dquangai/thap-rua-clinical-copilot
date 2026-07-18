@@ -50,6 +50,10 @@ Tài khoản demo đầy đủ (nếu muốn đăng nhập từng vai):
 4. Bấm nút **thu nhỏ** (góc phải header modal) → modal thành bong bóng nổi kéo-thả được; bấm bong bóng để mở lại.
 5. Bấm "Kiểm tra hồ sơ (AI)" lần nữa → hệ thống **chỉ chấm lại các tiêu chí chưa Approve** (xem `excluded_by_request_count` trong response — tiết kiệm token).
 
+![Modal Kiểm tra tuân thủ hồ sơ (AI) đang chạy: thông tin định danh bệnh nhân được che trên phiếu khám, tiến trình 3 bước Ẩn danh dữ liệu → Đối chiếu quy tắc → Tổng hợp kết quả](docs/images/ai-check-scanning.png)
+
+*Trong lúc AI đối chiếu, phiếu khám hiển thị đúng những gì được gửi đi: các trường định danh (họ tên, mã y tế, địa chỉ) đã bị che — minh hoạ trực quan cơ chế PII scrubbing; tiến trình 3 bước "Ẩn danh dữ liệu → Đối chiếu quy tắc → Tổng hợp kết quả" chạy thật, không phải hiệu ứng.*
+
 ### 2) Biên bản tư vấn AI + in A4
 *Cùng ca SIM-005 (có bệnh lý nên bắt buộc có biên bản).*
 1. Tại card **"Biên bản tư vấn"** (đang trống đúng thiết kế), bấm **"Tạo biên bản tư vấn"**.
