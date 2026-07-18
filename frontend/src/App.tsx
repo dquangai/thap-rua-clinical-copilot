@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { useEffect, useState, type ReactNode } from 'react'
-=======
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
->>>>>>> main
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -39,24 +35,16 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Printer,
-<<<<<<< HEAD
-  Plus,
-=======
->>>>>>> main
   Save,
   ScanLine,
-  ShieldCheck,
   Search,
   Settings,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   Syringe,
-<<<<<<< HEAD
   Trash2,
-=======
   TriangleAlert,
->>>>>>> main
   UserRoundCheck,
   Users,
   X,
@@ -67,11 +55,8 @@ import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
-<<<<<<< HEAD
 import { fetchLabSummaryPdf, requestLabNarrative } from './api/labAnalysisApi'
-=======
 import type { AiCheckResponse } from './types/aiCheck'
->>>>>>> main
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
@@ -358,15 +343,11 @@ function Sidebar() {
 
 function Header() {
   const toggleSidebar = useClinicalStore((state) => state.toggleSidebar)
-<<<<<<< HEAD
-=======
   const authUser = useAuthStore((state) => state.user)
   const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '')
   const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
   const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
   const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
-
->>>>>>> main
   return (
     <header className={styles.header}>
       <button type="button" className={styles.iconButton} onClick={toggleSidebar} aria-label="Thu gọn sidebar">
@@ -1610,11 +1591,8 @@ export default function App() {
     <Routes>
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
-<<<<<<< HEAD
       <Route path="/dich-vu-ky-thuat" element={<ProtectedRoute><TechnicalServicesWorkspace /></ProtectedRoute>} />
-=======
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
->>>>>>> main
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )
