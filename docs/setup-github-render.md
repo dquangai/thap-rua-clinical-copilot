@@ -142,6 +142,8 @@ Thực hiện sau khi `render.yaml` đã có trên remote `staging`:
 
 Nếu Blueprint đã tồn tại, mở Blueprint và chọn **Manual Sync** để đồng bộ thay đổi mới nhất từ `render.yaml`.
 
+Backend đã được khai báo `plan: free`; frontend là Static Site miễn phí. Nếu màn hình Blueprint vẫn chọn `starter` hoặc yêu cầu thanh toán, chưa xác nhận tạo service: quay lại kiểm tra Blueprint đang đọc đúng `render.yaml` trên branch `staging` và backend hiển thị **Free**. Render có thể vẫn đề nghị thêm phương thức thanh toán cho phần usage vượt hạn mức, nhưng không cần chọn gói trả phí để chạy cấu hình staging này.
+
 Trong từng service, kiểm tra tại **Settings → Build & Deploy**:
 
 ```text
@@ -302,6 +304,7 @@ Không rollback database bằng cách xóa collection. Thay đổi dữ liệu c
 - [ ] `.github/workflows/ci.yml` tồn tại trên remote `staging`.
 - [ ] Job `Backend tests` của GitHub Actions đã pass.
 - [ ] Render Blueprint theo dõi `staging`.
+- [ ] Backend dùng instance type **Free**, không phải `Starter`.
 - [ ] Auto-Deploy đặt thành **After CI Checks Pass**.
 - [ ] Backend đã có đủ MongoDB, Supabase và OpenAI secrets.
 - [ ] `VITE_API_BASE_URL` trỏ đúng backend `/api/v1`.

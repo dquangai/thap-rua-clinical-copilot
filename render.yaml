@@ -2,6 +2,7 @@ services:
   - type: web
     name: thap-rua-clinical-api
     runtime: python
+    plan: free
     branch: staging
     region: singapore
     buildCommand: pip install -r backend/api/requirements.txt
