@@ -1,6 +1,5 @@
 from functools import lru_cache
 
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,13 +8,13 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
-    supabase_url: str = ""
-    supabase_publishable_key: str = Field(default="", repr=False)
-    supabase_secret_key: str = Field(default="", repr=False)
+    mongodb_uri: str = ""
+    mongodb_database: str = "thap_rua_clinical"
 
     @property
-    def supabase_configured(self) -> bool:
-        return bool(self.supabase_url and self.supabase_publishable_key and self.supabase_secret_key)
+    def mongodb_configured(self) -> bool:
+        return bool(self.mongodb_uri)
+
 
 
 @lru_cache

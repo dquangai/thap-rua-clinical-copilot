@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import {
   Activity,
   Ban,
@@ -25,7 +25,6 @@ import {
   Info,
   ListRestart,
   LoaderCircle,
-  LogOut,
   Megaphone,
   Menu,
   Pill,
@@ -44,16 +43,12 @@ import {
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
 import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
-import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
-import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
 
-// Bypass đăng nhập khi test local chưa có Supabase; bật bằng VITE_AUTH_BYPASS=true trong frontend/.env.local
-const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
 
 const navigation = [
   { label: 'Tổng quan', icon: House, path: '/tong-quan' },
@@ -158,9 +153,6 @@ const remediationFor = (itemId: string) => remediationRegistry[itemId] ?? defaul
 
 function Sidebar() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
-  const logout = useAuthStore((state) => state.logout)
-  const isSubmitting = useAuthStore((state) => state.isSubmitting)
-  const authUser = useAuthStore((state) => state.user)
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
@@ -182,13 +174,10 @@ function Sidebar() {
         ))}
       </nav>
       <div className={styles.sidebarFooter}>
-        <div className={styles.sidebarDoctor} title={authUser?.email ?? undefined}>
+        <div className={styles.sidebarDoctor}>
           <span>HM</span>
           <div><strong>BS. Lê Thị Mỹ Hạnh</strong><small>Khoa Sản</small></div>
         </div>
-        <button type="button" className={styles.logoutButton} onClick={() => void logout()} disabled={isSubmitting}>
-          <LogOut size={18} /><span>{isSubmitting ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
-        </button>
       </div>
     </aside>
   )
@@ -901,33 +890,15 @@ function HisWorkspace() {
 }
 
 export default function App() {
-  const status = useAuthStore((state) => state.status)
-  const expiresAt = useAuthStore((state) => state.expiresAt)
-  const initialize = useAuthStore((state) => state.initialize)
-  const refreshSession = useAuthStore((state) => state.refreshSession)
-
-  useEffect(() => {
-    void initialize()
-  }, [initialize])
-
-  useEffect(() => {
-    if (status !== 'authenticated' || !expiresAt) return
-    const refreshAt = expiresAt * 1000 - 60_000
-    const timeoutId = window.setTimeout(() => void refreshSession(), Math.max(1_000, refreshAt - Date.now()))
-    return () => window.clearTimeout(timeoutId)
-  }, [expiresAt, refreshSession, status])
-
-  if (status === 'checking') return <AuthLoadingScreen />
-
   return (
     <Routes>
-      <Route path="/dang-nhap" element={<LoginPage />} />
-      <Route path="/" element={<Navigate to={AUTH_BYPASS ? '/ho-so-benh-an' : '/dang-nhap'} replace />} />
-      <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
+      <Route path="/" element={<Navigate to="/ho-so-benh-an" replace />} />
+      <Route path="*" element={<HisWorkspace />} />
     </Routes>
   )
 }
 
+<<<<<<< Updated upstream
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const status = useAuthStore((state) => state.status)
   const location = useLocation()
@@ -940,3 +911,16 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
   return children
 }
+=======
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> Stashed changes

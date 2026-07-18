@@ -7,7 +7,7 @@ Nền tảng HIS/EMR theo workflow phòng khám, tách frontend/backend rõ ràn
 ~~~text
 frontend/              # React + Vite, giao diện HIS/EMR
 backend/
-  api/                 # Clinical API, auth, audit, integrations
+  api/                 # Clinical API và MongoDB integration
   ai/                  # AI gateway, model registry, evaluations
 packages/domain/       # Contract nghiệp vụ dùng chung
 docs/                  # Kiến trúc và quyết định kỹ thuật
@@ -20,7 +20,7 @@ npm install
 npm run dev:frontend
 ~~~
 
-Backend dùng Python/FastAPI với Supabase Cloud PostgreSQL và Supabase Auth. Xem `docs/supabase-online-setup.md` để thiết lập hoàn toàn trên web, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
+Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực. Xem `docs/mongodb-atlas-setup.md`, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
 
 ## Hiện có
 
@@ -34,7 +34,7 @@ Backend dùng Python/FastAPI với Supabase Cloud PostgreSQL và Supabase Auth. 
 
 ## Roadmap đề xuất
 
-1. Nền tảng: auth/RBAC, audit log, patient registry, encounter API, PostgreSQL.
+1. Nền tảng: patient registry, clinical-record API và MongoDB Atlas.
 2. Clinical core: orders/results, thuốc-vật tư, mẫu bệnh án, ICD-10, FHIR adapters.
 3. AI copilot: tóm tắt hồ sơ, gợi ý ICD, kiểm tra thiếu dữ liệu, soạn hướng dẫn tái khám.
 4. Production hardening: observability, backup, disaster recovery, security review, clinical evaluation.

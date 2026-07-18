@@ -1,35 +1,32 @@
-# Clinical API (Python + Supabase Cloud)
+# Clinical API (Python + MongoDB Atlas)
 
-FastAPI service dùng Supabase Cloud cho PostgreSQL và Auth. Dự án chỉ có một loại tài khoản đăng nhập là bác sĩ.
+FastAPI service không có authentication, dùng MongoDB Atlas để lưu bệnh nhân và bệnh án.
 
 ## Setup
 
-Làm theo [hướng dẫn Supabase Cloud](../../docs/supabase-online-setup.md) để tạo project, chạy migration trên Dashboard và cấu hình key.
-
-```bash
+```powershell
 cd backend/api
 python -m venv .venv
-# Windows
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-copy .env.example .env
+Copy-Item .env.example .env
+python -m scripts.setup_mongodb
 ```
 
-Điền thông tin Supabase Cloud vào `.env`, sau đó từ root chạy:
+Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health`, OpenAPI ở `http://localhost:4000/docs`.
 
-```bash
-npm run dev:backend
-```
+## API
 
-- Health: `GET http://localhost:4000/health`
-- OpenAPI: `http://localhost:4000/docs`
-- API: `/api/v1/patients`, `/api/v1/encounters`, `/api/v1/encounters/{id}/workspace`
-- Auth API: xem [`docs/auth-api.md`](../../docs/auth-api.md)
-
-Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-token>`. Frontend đăng nhập bằng Supabase Auth với publishable key, rồi gửi access token cho API. Secret key chỉ được dùng trong backend và có thể vượt qua RLS.
+- `GET /api/v1/patients`
+- `GET /api/v1/patients/{patient_id}`
+- `POST /api/v1/patients`
+- `GET /api/v1/patients/{patient_id}/clinical-records`
+- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}`
+- `POST /api/v1/patients/{patient_id}/clinical-records`
+- `PATCH /api/v1/patients/{patient_id}/clinical-records/{record_id}`
 
 ## Kiểm thử
 
-```bash
+```powershell
 python -m pytest
 ```

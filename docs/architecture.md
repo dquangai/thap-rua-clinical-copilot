@@ -8,7 +8,7 @@ packages/
   domain/              # Patient, Encounter, ClinicalNote, AiSuggestion
   ui/                  # design tokens/components dùng chung (giai đoạn tiếp theo)
 backend/
-  api/                 # clinical API, auth, audit, integrations
+  api/                 # clinical API và MongoDB integration
   ai/                  # AI gateway, prompt/model registry, evaluations
 docs/
   architecture.md
