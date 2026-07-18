@@ -256,6 +256,29 @@
 
 .submitButton:disabled { cursor: not-allowed; opacity: .58; box-shadow: none; }
 
+.demoButton {
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid #b9c9d9;
+  border-radius: 9px;
+  color: var(--brand-navy);
+  background: #f5f8fb;
+  font-size: 13px;
+  font-weight: 750;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.demoButton:hover:not(:disabled) {
+  border-color: var(--brand-navy);
+  background: #edf4fa;
+  transform: translateY(-1px);
+}
+
+.demoButton:disabled { cursor: not-allowed; opacity: .58; }
+
 .buttonSpinner,
 .spinner {
   width: 16px;
