@@ -17,8 +17,5 @@
     "test:ai": "PYTHONPATH=backend/ai python -m unittest discover -s backend/ai/tests",
     "check:ai:dry": "PYTHONPATH=backend/ai python -m clinical_checker.cli --data data/sim_kham1.json --rules rules --dry-run",
     "check:ai": "PYTHONPATH=backend/ai python -m clinical_checker.cli --data data --rules rules --output results"
-  },
-  "devDependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.2.0"
   }
 }
