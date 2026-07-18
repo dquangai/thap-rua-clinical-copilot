@@ -938,6 +938,139 @@
   color: #2c414c;
 }
 
+.scheduleWorkspace {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  overflow-y: auto;
+}
+
+.scheduleHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 4px;
+    color: var(--brand-navy);
+    font-size: 16px;
+    font-weight: 750;
+  }
+
+  p { margin: 0; color: #5c7484; font-size: 11px; }
+}
+
+.scheduleControls {
+  display: flex;
+  gap: 6px;
+
+  button {
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: #fff;
+    color: #33505e;
+    font-size: 10.5px;
+    font-weight: 700;
+
+    &:hover { border-color: var(--brand-blue); }
+  }
+}
+
+.scheduleRangeActive {
+  border-color: var(--brand-navy) !important;
+  background: var(--brand-navy) !important;
+  color: #fff !important;
+}
+
+.scheduleGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.scheduleDay {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 6px 18px rgba(29, 76, 78, .05);
+
+  > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+}
+
+.scheduleDayToday { border-color: var(--brand-navy); box-shadow: 0 0 0 2px rgba(19, 77, 139, .14); }
+.scheduleDayOff { opacity: .6; background: #f6f8fa; }
+
+.scheduleDayName {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #22404e;
+
+  strong { font-size: 11.5px; }
+}
+
+.scheduleTodayChip {
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--brand-navy);
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.scheduleLoadChip {
+  padding: 3px 8px;
+  border-radius: 20px;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.scheduleEmpty { margin: 0; color: #8fa3ad; font-size: 10.5px; font-style: italic; }
+
+.scheduleList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 9px;
+    border: 1px solid #e3ebf1;
+    border-radius: 7px;
+    background: #f9fbfd;
+
+    strong { font-size: 11px; color: #1d3743; }
+    span { font-size: 9.5px; color: #64808d; }
+  }
+}
+
 .apptReason {
   margin: 0 0 12px;
   padding: 9px 12px;

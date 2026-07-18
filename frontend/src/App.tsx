@@ -59,7 +59,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import { fetchLabSummaryPdf, requestLabNarrative } from './api/labAnalysisApi'
-import { bookFollowUp, suggestFollowUp, type SuggestFollowUpResponse } from './api/appointmentsApi'
+import { bookFollowUp, fetchAppointmentSchedule, suggestFollowUp, type ScheduleResponse, type SuggestFollowUpResponse } from './api/appointmentsApi'
 import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
@@ -1919,6 +1919,128 @@ function TechnicalServicesWorkspace() {
     </div>
   )
 }
+const SCHEDULE_RANGE_OPTIONS = [7, 14, 30] as const
+
+function AppointmentsWorkspace() {
+  const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
+  const toastMessage = useClinicalStore((state) => state.toastMessage)
+  const clearToast = useClinicalStore((state) => state.clearToast)
+  const [rangeDays, setRangeDays] = useState<number>(14)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [schedule, setSchedule] = useState<ScheduleResponse | null>(null)
+
+  const loadSchedule = async (days: number) => {
+    setLoading(true)
+    setError('')
+    try {
+      setSchedule(await fetchAppointmentSchedule(days))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không tải được lịch hẹn')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadSchedule(rangeDays)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeDays])
+
+  useEffect(() => {
+    if (!toastMessage) return
+    const timeoutId = window.setTimeout(clearToast, 2200)
+    return () => window.clearTimeout(timeoutId)
+  }, [toastMessage, clearToast])
+
+  const busiest = schedule?.days.reduce(
+    (max, day) => (day.load > (max?.load ?? 0) ? day : max),
+    null as ScheduleResponse['days'][number] | null,
+  )
+
+  return (
+    <div className={styles.appShell}>
+      <Sidebar />
+      <main className={`${styles.mainShell} ${collapsed ? styles.mainShellCollapsed : ''}`}>
+        <Header />
+        <div className={styles.scheduleWorkspace}>
+          <header className={styles.scheduleHeader}>
+            <div>
+              <h2><CalendarDays size={18} /> Lịch hẹn tái khám</h2>
+              <p>
+                {schedule
+                  ? `${schedule.total} lịch hẹn trong ${rangeDays} ngày tới · sức chứa ${schedule.capacity} lượt/ngày` +
+                    (busiest && busiest.load > 0 ? ` · đông nhất: ${busiest.weekday} ${formatAppointmentDate(busiest.date)} (${busiest.load})` : '')
+                  : 'Đang tải...'}
+              </p>
+            </div>
+            <div className={styles.scheduleControls}>
+              {SCHEDULE_RANGE_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={option === rangeDays ? styles.scheduleRangeActive : ''}
+                  onClick={() => setRangeDays(option)}
+                >
+                  {option} ngày
+                </button>
+              ))}
+              <button type="button" onClick={() => void loadSchedule(rangeDays)} aria-label="Tải lại lịch hẹn">
+                <ListRestart size={15} />
+              </button>
+            </div>
+          </header>
+
+          {loading && (
+            <div className={styles.aiLoading}>
+              <LoaderCircle size={22} className={styles.aiSpinner} />
+              <p>Đang tải lịch hẹn...</p>
+            </div>
+          )}
+          {!loading && error && <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>}
+          {!loading && !error && schedule && (
+            <div className={styles.scheduleGrid}>
+              {schedule.days.map((day) => (
+                <section
+                  key={day.date}
+                  className={`${styles.scheduleDay} ${day.is_sunday ? styles.scheduleDayOff : ''} ${day.is_today ? styles.scheduleDayToday : ''}`}
+                >
+                  <header>
+                    <span className={styles.scheduleDayName}>
+                      <strong>{day.weekday}</strong> {formatAppointmentDate(day.date)}
+                      {day.is_today && <em className={styles.scheduleTodayChip}>Hôm nay</em>}
+                    </span>
+                    {!day.is_sunday && (
+                      <span className={`${styles.scheduleLoadChip} ${styles[`apptTone_${day.label}`]}`}>
+                        {day.load}/{day.capacity} · {APPOINTMENT_LOAD_LABELS[day.label]}
+                      </span>
+                    )}
+                  </header>
+                  {day.is_sunday ? (
+                    <p className={styles.scheduleEmpty}>Nghỉ Chủ nhật</p>
+                  ) : day.appointments.length === 0 ? (
+                    <p className={styles.scheduleEmpty}>Chưa có lịch hẹn</p>
+                  ) : (
+                    <ul className={styles.scheduleList}>
+                      {day.appointments.map((item) => (
+                        <li key={item.id}>
+                          <strong>{item.patient_name || 'Bệnh nhân'}</strong>
+                          <span>{item.medical_id}{item.note ? ` · ${item.note}` : ''}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+      {toastMessage && <div className={styles.toast}><Activity size={16} />{toastMessage}</div>}
+    </div>
+  )
+}
+
 function HisWorkspace() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
   const patientPanelCollapsed = useClinicalStore((state) => state.patientPanelCollapsed)
@@ -1972,6 +2094,7 @@ export default function App() {
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
       <Route path="/dich-vu-ky-thuat" element={<ProtectedRoute><TechnicalServicesWorkspace /></ProtectedRoute>} />
+      <Route path="/lich-hen" element={<ProtectedRoute><AppointmentsWorkspace /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
