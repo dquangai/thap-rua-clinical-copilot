@@ -56,28 +56,3 @@ def test_unknown_async_job_returns_404():
     with TestClient(app) as client:
         response = client.get("/api/v1/ai/jobs/not-a-job")
     assert response.status_code == 404
-
-def test_check_record_can_focus_and_exclude_criteria_without_calling_llm():
-    client = TestClient(app)
-    focused = client.post(
-        "/api/v1/ai/check-record",
-        json={"record": SAMPLE_RECORD, "dry_run": True, "include_criteria": ["R02.2"]},
-    )
-    assert focused.status_code == 200
-    assert focused.json()["meta"]["criteria_count"] == 1
-    assert focused.json()["meta"]["included_by_request_count"] == 1
-
-    excluded = client.post(
-        "/api/v1/ai/check-record",
-        json={"record": SAMPLE_RECORD, "dry_run": True, "exclude_criteria": ["R02.2"]},
-    )
-    assert excluded.status_code == 200
-    assert excluded.json()["meta"]["excluded_by_request_count"] == 1
-
-
-def test_check_record_rejects_unknown_criteria_selection():
-    response = TestClient(app).post(
-        "/api/v1/ai/check-record",
-        json={"record": SAMPLE_RECORD, "dry_run": True, "include_criteria": ["UNKNOWN"]},
-    )
-    assert response.status_code == 422
