@@ -87,6 +87,10 @@ Tài khoản demo đầy đủ (nếu muốn đăng nhập từng vai):
 2. Xem phiếu đã **che thông tin cá nhân**; hệ thống đối chiếu số học và AI tóm tắt các chỉ số bất thường vào ô **"Nội dung nhận xét xét nghiệm"** (AI không chẩn đoán, không sửa số liệu).
 3. Bấm **"In phiếu xét nghiệm tổng hợp"** để xuất PDF.
 
+![Phiếu xét nghiệm tổng hợp: banner "Đã ẩn thông tin định danh", bảng kết quả với chỉ số bất thường được tô nổi, panel Agent đối chiếu liệt kê 5 chỉ số bất thường (4 Cao, 1 Thấp) kèm nút Tham chiếu, ô "Nội dung bác sĩ duyệt" chỉnh sửa được](docs/images/lab-synthesis.png)
+
+*Banner xanh ghi rõ những gì KHÔNG gửi cho AI (họ tên, ngày sinh, mã hồ sơ, địa chỉ, nhân viên y tế); hệ thống đối chiếu số học trước, AI chỉ biên tập câu chữ cho 5 chỉ số bất thường — bấm "Tham chiếu" nhảy đến đúng dòng tô nổi trên phiếu. Kết quả nằm trong ô "Nội dung bác sĩ duyệt" kèm cảnh báo: bản nháp hỗ trợ nhập liệu, bác sĩ phải kiểm tra và duyệt trước khi đưa vào hồ sơ.*
+
 ### 6) Trung tâm quản trị (chi phí AI minh bạch)
 1. Đăng xuất → đăng nhập `admin@thaprua.vn / Admin@123` → tự vào **/admin**.
 2. Xem thẻ tổng quan: tài khoản hoạt động, tổng API calls, latency P95, **chi phí AI quy đổi tiền**; tab nhật ký liệt kê **từng lượt gọi AI** (endpoint, model, token vào/ra, chi phí).
