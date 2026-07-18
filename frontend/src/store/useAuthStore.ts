@@ -11,8 +11,7 @@ import type { AuthSession, AuthStatus, AuthTokens, AuthUser } from '../types/aut
 const SESSION_STORAGE_KEY = 'thap-rua.auth.session.v1'
 const REFRESH_EARLY_SECONDS = 60
 
-export const DEMO_DOCTOR_EMAIL = 'admin@thaprua.vn'
-export const DEMO_DOCTOR_PASSWORD = 'Admin@123'
+export const DEMO_DOCTOR_EMAIL = 'myhanh@thaprua.vn'
 export const DEMO_ACCOUNTS = [
   { id: 'demo-admin', email: 'admin@thaprua.vn', password: 'Admin@123', role: 'SUPER_ADMIN' as const, fullName: 'Quản trị viên', department: 'Quản trị hệ thống' },
   { id: 'demo-doctor-hanh', email: 'myhanh@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Lê Thị Mỹ Hạnh', department: 'Khoa Sản' },
