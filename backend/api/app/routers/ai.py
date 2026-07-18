@@ -61,6 +61,8 @@ COUNSELING_SYSTEM_PROMPT = (
 class CheckRecordRequest(BaseModel):
     record: dict[str, Any]
     dry_run: bool = Field(default=False, description="Chỉ redact + quét PII, không gọi LLM")
+    include_criteria: list[str] | None = Field(default=None, description="Chỉ kiểm tra các tiêu chí này")
+    exclude_criteria: list[str] = Field(default_factory=list, description="Bỏ qua các tiêu chí đã được duyệt")
     record_id: str | None = None
     record_version: int | None = Field(default=None, ge=1)
 
@@ -318,9 +320,30 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         criterion["item_id"]: criterion["criterion"]
         for criterion in extract_required_criteria(rules)
     }
+    known_ids = set(criteria_catalog)
+    included = set(payload.include_criteria) if payload.include_criteria is not None else None
+    excluded = set(payload.exclude_criteria)
+    requested_ids = (included or set()) | excluded
+    unknown_ids = sorted(requested_ids - known_ids)
+    if unknown_ids:
+        raise HTTPException(status_code=422, detail=f"Tiêu chí không tồn tại: {', '.join(unknown_ids)}")
+    if included is not None and included & excluded:
+        overlap = ", ".join(sorted(included & excluded))
+        raise HTTPException(status_code=422, detail=f"Tiêu chí vừa được chọn vừa bị loại trừ: {overlap}")
+
     if payload.dry_run:
         try:
-            output = run_check(payload.record, rules, settings, LOG_PATH, dry_run=True)
+            output = run_check(
+                payload.record,
+                rules,
+                settings,
+                LOG_PATH,
+                dry_run=True,
+                include_criteria=included,
+                exclude_criteria=excluded,
+            )
+        except CriteriaValidationError as exc:
+            raise HTTPException(status_code=502, detail=f"Kết quả AI không hợp lệ: {exc}") from exc
         except RuntimeError as exc:
             message = str(exc)
             raise HTTPException(status_code=422 if "PII" in message else 502, detail=message) from exc
@@ -335,6 +358,9 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
             "input_tokens": telemetry.get("input_tokens"),
             "output_tokens": telemetry.get("output_tokens"),
             "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
+            "criteria_count": telemetry.get("criteria_count"),
+            "included_by_request_count": telemetry.get("included_by_request_count"),
+            "excluded_by_request_count": telemetry.get("excluded_by_request_count"),
             "cache_status": "bypass",
         }
         write_api_usage(endpoint="/api/v1/ai/check-record", method="POST", telemetry=telemetry, status_code=200)
@@ -345,9 +371,14 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         raise HTTPException(status_code=422, detail="Phát hiện mẫu PII còn sót trong hồ sơ, đã hủy request")
     prompt_version = content_hash(SYSTEM_PROMPT)
     rules_version = content_hash(rules)
+    cache_input = {
+        "record": safe_record,
+        "include_criteria": sorted(included) if included is not None else None,
+        "exclude_criteria": sorted(excluded),
+    }
     cache_key, input_hash = make_cache_key(
         "clinical_compliance_check",
-        safe_record,
+        cache_input,
         pipeline_version=settings.pipeline_version,
         prompt_version=prompt_version,
         rules_version=rules_version,
@@ -363,7 +394,15 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI checker")
 
     try:
-        output = run_check(payload.record, rules, settings, LOG_PATH, dry_run=False)
+        output = run_check(
+            payload.record,
+            rules,
+            settings,
+            LOG_PATH,
+            dry_run=False,
+            include_criteria=included,
+            exclude_criteria=excluded,
+        )
     except CriteriaValidationError as exc:
         raise HTTPException(status_code=502, detail=f"Kết quả AI không hợp lệ: {exc}") from exc
     except RuntimeError as exc:
@@ -382,9 +421,11 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         "input_tokens": telemetry.get("input_tokens"),
         "output_tokens": telemetry.get("output_tokens"),
         "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
+        "criteria_count": telemetry.get("criteria_count"),
+        "included_by_request_count": telemetry.get("included_by_request_count"),
+        "excluded_by_request_count": telemetry.get("excluded_by_request_count"),
         "cache_status": "miss",
-        "original_total_tokens": telemetry.get("total_tokens") or 0,
-    }
+        "original_total_tokens": telemetry.get("total_tokens") or 0,    }
     result = {
         "run_id": output["run_id"],
         "result": output["result"],

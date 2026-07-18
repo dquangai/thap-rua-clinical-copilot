@@ -21,6 +21,9 @@ export interface AiCheckResponse {
     latency_ms?: number
     total_tokens?: number
     api_calls?: number
+    criteria_count?: number
+    included_by_request_count?: number
+    excluded_by_request_count?: number
     cache_status?: 'hit' | 'miss' | 'bypass'
     saved_tokens?: number
   }
