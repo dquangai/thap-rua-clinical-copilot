@@ -111,6 +111,31 @@ def test_suggest_and_book_api_flow(monkeypatch):
     assert day_entry and day_entry[0]["load"] == 1
 
 
+def test_schedule_groups_appointments_by_day(monkeypatch):
+    monkeypatch.setattr(appointments_router, "_database_or_none", lambda: None)
+    monkeypatch.setattr(appointments_router, "_memory_appointments", [])
+    client = TestClient(app)
+
+    target = date.today() + timedelta(days=2)
+    if target.weekday() == 6:
+        target += timedelta(days=1)
+    for medical_id, name in [("SIM-001", "Nguyễn Thị Mai Anh"), ("SIM-005", "Võ Thị Kim Ngân")]:
+        booked = client.post(
+            "/api/v1/appointments",
+            json={"medical_id": medical_id, "patient_name": name, "date": target.isoformat()},
+        )
+        assert booked.status_code == 201
+
+    body = client.get("/api/v1/appointments/schedule?days=14").json()
+    assert body["total"] == 2
+    day_entry = next(d for d in body["days"] if d["date"] == target.isoformat())
+    assert day_entry["load"] == 2
+    assert [a["medical_id"] for a in day_entry["appointments"]] == ["SIM-001", "SIM-005"]
+    assert day_entry["appointments"][1]["patient_name"] == "Võ Thị Kim Ngân"
+    today_entry = body["days"][0]
+    assert today_entry["is_today"] is True
+
+
 def test_book_rejects_sunday_and_full_day(monkeypatch):
     monkeypatch.setattr(appointments_router, "_database_or_none", lambda: None)
     monkeypatch.setattr(appointments_router, "_memory_appointments", [])

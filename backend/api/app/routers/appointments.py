@@ -22,6 +22,7 @@ from app.database import get_database
 from app.scheduling import (
     WEEKDAY_LABELS,
     default_interval_days,
+    load_label,
     parse_interval_days,
     suggest_days,
 )
@@ -113,6 +114,20 @@ def _count_by_date(db, start: date, end: date) -> dict[date, int]:
             if start <= day <= end:
                 counts[day] = counts.get(day, 0) + 1
     return counts
+
+
+def _list_range(db, start: date, end: date) -> list[dict]:
+    if db is not None:
+        rows = db.appointments.find(
+            {"date": {"$gte": start.isoformat(), "$lte": end.isoformat()}}, {"_id": 0}
+        )
+        return list(rows)
+    with _memory_lock:
+        return [
+            dict(row)
+            for row in _memory_appointments
+            if start <= date.fromisoformat(row["date"]) <= end
+        ]
 
 
 def _insert(db, appointment: dict) -> None:
@@ -221,6 +236,50 @@ def book_follow_up(payload: BookRequest) -> dict:
         "appointment": appointment,
         "day_load": load + 1,
         "capacity": _capacity(),
+    }
+
+
+@router.get("/schedule")
+def schedule(days: int = 14) -> dict:
+    """Lịch tái khám theo ngày kèm danh sách bệnh nhân — cho trang Lịch hẹn."""
+    days = max(1, min(days, 60))
+    today = date.today()
+    end = today + timedelta(days=days - 1)
+    db = _database_or_none()
+    appointments = _list_range(db, today, end)
+    by_day: dict[str, list[dict]] = {}
+    for item in sorted(appointments, key=lambda row: row.get("created_at", "")):
+        by_day.setdefault(item["date"], []).append(
+            {
+                "id": item.get("id", ""),
+                "medical_id": item.get("medical_id", ""),
+                "patient_name": item.get("patient_name", ""),
+                "note": item.get("note", ""),
+                "created_at": item.get("created_at", ""),
+            }
+        )
+    capacity = _capacity()
+    day_entries = []
+    for offset in range(days):
+        day = today + timedelta(days=offset)
+        entries = by_day.get(day.isoformat(), [])
+        day_entries.append(
+            {
+                "date": day.isoformat(),
+                "weekday": WEEKDAY_LABELS[day.weekday()],
+                "is_today": day == today,
+                "is_sunday": day.weekday() == 6,
+                "load": len(entries),
+                "capacity": capacity,
+                "label": load_label(len(entries), capacity),
+                "appointments": entries,
+            }
+        )
+    return {
+        "capacity": capacity,
+        "total": len(appointments),
+        "storage": "mongodb" if db is not None else "memory",
+        "days": day_entries,
     }
 
 

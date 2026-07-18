@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.ai_jobs import AiJobQueue, queue_settings
 from app.config import get_settings
 from app.database import get_database
-from app.routers import ai, clinical_records, collections, lab_analysis, lab_reports, patients
+from app.routers import ai, appointments, clinical_records, collections, lab_analysis, lab_reports, patients
 
 settings = get_settings()
 
@@ -35,6 +35,7 @@ app.include_router(collections.router, prefix="/api/v1")
 app.include_router(lab_analysis.router, prefix="/api/v1")
 app.include_router(lab_reports.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
+app.include_router(appointments.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["system"])

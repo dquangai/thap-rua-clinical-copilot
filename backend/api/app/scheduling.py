@@ -53,7 +53,7 @@ class DayCandidate:
     recommended: bool
 
 
-def _load_label(load: int, capacity: int) -> str:
+def load_label(load: int, capacity: int) -> str:
     ratio = load / capacity if capacity else 1.0
     if ratio >= 1.0:
         return "day"  # đã đầy, không nhận thêm
@@ -89,7 +89,7 @@ def suggest_days(
         if day <= today or day.weekday() == 6:
             continue
         load = loads.get(day, 0)
-        label = _load_label(load, capacity)
+        label = load_label(load, capacity)
         candidates.append(
             (
                 _score(offset, load, capacity),
