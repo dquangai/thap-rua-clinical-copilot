@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai_jobs import AiJobQueue, queue_settings
 from app.config import get_settings
+from app.database import get_database
 from app.routers import ai, clinical_records, lab_analysis, lab_reports, patients
 
 settings = get_settings()
@@ -44,3 +45,12 @@ def health():
         "database": settings.mongodb_database,
         "openai": "configured" if settings.openai_configured else "missing-api-key",
     }
+
+
+@app.get("/ready", tags=["system"])
+def ready():
+    try:
+        get_database().command("ping")
+    except Exception as exc:
+        raise HTTPException(status_code=503, detail="Database is not ready") from exc
+    return {"status": "ready", "service": "clinical-api"}

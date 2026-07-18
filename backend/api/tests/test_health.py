@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app import main
 from app.main import app
 
 
@@ -7,6 +8,27 @@ def test_health():
     response = TestClient(app).get("/health")
     assert response.status_code == 200
     assert response.json()["service"] == "clinical-api"
+
+
+def test_ready_pings_database(monkeypatch):
+    class Database:
+        def command(self, command: str):
+            assert command == "ping"
+            return {"ok": 1}
+
+    monkeypatch.setattr(main, "get_database", lambda: Database())
+    response = TestClient(app).get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+
+
+def test_ready_returns_503_when_database_is_unavailable(monkeypatch):
+    def unavailable():
+        raise RuntimeError("connection failed")
+
+    monkeypatch.setattr(main, "get_database", unavailable)
+    response = TestClient(app).get("/ready")
+    assert response.status_code == 503
 
 
 def test_patient_and_clinical_record_routes_are_public():
