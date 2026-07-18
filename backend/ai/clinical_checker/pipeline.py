@@ -432,7 +432,9 @@ def apply_deterministic_checks(result: dict[str, Any], record: dict[str, Any], r
 
 
 def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
-              log_path: Path, dry_run: bool = False) -> dict[str, Any]:
+              log_path: Path, dry_run: bool = False,
+              include_criteria: set[str] | None = None,
+              exclude_criteria: set[str] | None = None) -> dict[str, Any]:
     run_id = str(uuid.uuid4())
     started_at = datetime.now(timezone.utc)
     started = time.perf_counter()
@@ -440,7 +442,12 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
     residual = find_residual_pii(safe_record)
     all_criteria = extract_required_criteria(rules)
     gestational_age = detect_gestational_age(safe_record)
-    criteria, excluded_criteria = filter_criteria_by_trimester(all_criteria, gestational_age["trimester"])
+    scoped_criteria, excluded_by_scope = filter_criteria_by_trimester(all_criteria, gestational_age["trimester"])
+    criteria = scoped_criteria
+    if include_criteria is not None:
+        criteria = [criterion for criterion in criteria if criterion["item_id"] in include_criteria]
+    requested_exclusions = exclude_criteria or set()
+    criteria = [criterion for criterion in criteria if criterion["item_id"] not in requested_exclusions]
     required_ids = [item["item_id"] for item in criteria]
     output_contract = {
         "dat_ids": ["IDs kết luận DAT; mỗi ID xuất hiện đúng một lần trong toàn response"],
@@ -451,15 +458,17 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
     }
     user_prompt = ("REQUIRED_CRITERIA:\n" + _canonical(criteria) + "\n\nOUTPUT_CONTRACT:\n" +
                    _canonical(output_contract) + "\n\nCLINICAL_RECORD:\n" + _canonical(safe_record))
-    batches = split_batches(criteria, settings.batch_size)
+    batches = split_batches(criteria, settings.batch_size) if criteria else []
     base_event = {
         "batch_count": len(batches), "batch_sizes": [len(batch) for batch in batches],
         "run_id": run_id, "started_at": started_at.isoformat(), "pipeline_version": settings.pipeline_version,
         "provider": settings.provider, "model": settings.model, "prompt_sha256": _sha256(SYSTEM_PROMPT),
         "rules_sha256": _sha256(_canonical(rules)), "input_sha256": _sha256(_canonical(safe_record)),
         "gestational_age": gestational_age, "criteria_count": len(required_ids),
-        "criteria_count_before_scope": len(all_criteria), "criteria_count_after_scope": len(criteria),
-        "excluded_by_scope_count": len(excluded_criteria),
+        "criteria_count_before_scope": len(all_criteria), "criteria_count_after_scope": len(scoped_criteria),
+        "excluded_by_scope_count": len(excluded_by_scope),
+        "included_by_request_count": len(include_criteria) if include_criteria is not None else None,
+        "excluded_by_request_count": len(requested_exclusions),
         "pii_scan_passed": not residual, "pii_findings": residual,
     }
     if residual and settings.pii_fail_closed:
@@ -471,6 +480,16 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
                  "payload_bytes": len(user_prompt.encode())}
         _append_log(log_path, event)
         return {"run_id": run_id, "safe_record": safe_record, "telemetry": event}
+    if not criteria:
+        result = {"ket_luan": "DAT", "khong_dat": [], "vi_pham_critical": [], "khuyen_nghi": ""}
+        event = {
+            **base_event, "status": "success", "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+            "input_tokens": 0, "output_tokens": 0, "total_tokens": 0, "api_calls": 0,
+            "estimated_cost_usd": 0, "request_ids": [], "output_sha256": _sha256(_canonical(result)),
+        }
+        _append_log(log_path, event)
+        return {"run_id": run_id, "result": result, "telemetry": event}
+
     def check_batch(batch: list[dict[str, Any]]) -> tuple[Any, dict[str, Any], list[str], dict[str, list[str]]]:
         batch_ids = [item["item_id"] for item in batch]
         batch_prompt = ("REQUIRED_CRITERIA:\n" + _canonical(batch) + "\n\nOUTPUT_CONTRACT:\n" +
