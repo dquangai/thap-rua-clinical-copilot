@@ -19,6 +19,6 @@
     "check:ai": "PYTHONPATH=backend/ai python -m clinical_checker.cli --data data --rules rules --output results"
   },
   "devDependencies": {
-    "@rolldown/binding-darwin-arm64": "^1.2.0"
+    "lightningcss-darwin-arm64": "^1.32.0"
   }
 }

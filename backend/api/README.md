@@ -1,6 +1,9 @@
 # Clinical API (Python + MongoDB Atlas)
 
-FastAPI service không có authentication, dùng MongoDB Atlas để lưu bệnh nhân và bệnh án.
+FastAPI service dùng MongoDB Atlas để lưu bệnh nhân, bệnh án, lịch sử phiên bản và AI artifacts.
+Các thao tác tạo/sửa/khôi phục bệnh án yêu cầu Bearer token để ghi đúng danh tính bác sĩ.
+
+Tài liệu thiết kế và vận hành chi tiết: [`docs/document-versioning-ai-cache.md`](../../docs/document-versioning-ai-cache.md).
 
 ## Setup
 
@@ -24,6 +27,48 @@ Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health
 - `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}`
 - `POST /api/v1/patients/{patient_id}/clinical-records`
 - `PATCH /api/v1/patients/{patient_id}/clinical-records/{record_id}`
+- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions`
+- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}`
+- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}/diff`
+- `POST /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}/restore`
+
+`POST` tạo đồng thời bản hiện hành và version 1. `PATCH` yêu cầu header
+`If-Match-Version: <current_version>`; nội dung không đổi không tạo version mới. Nếu một người khác đã lưu trước,
+API trả `409 VERSION_CONFLICT`. Restore không ghi đè lịch sử mà tạo version mới từ snapshot được chọn.
+
+Chạy `python -m scripts.setup_mongodb` sau khi cập nhật để tạo unique index `(record_id, version)` và index cache.
+Hồ sơ cũ được tự động backfill thành version 1 khi được đọc hoặc cập nhật lần đầu.
+
+Ví dụ cập nhật:
+
+```http
+PATCH /api/v1/patients/patient-1/clinical-records/record-1
+Authorization: Bearer <access-token>
+If-Match-Version: 3
+Content-Type: application/json
+
+{"diagnosis":{"icd10":"O24.4"}}
+```
+
+## AI result cache
+
+`/ai/check-record`, `/ai/jobs` và `/ai/generate-counseling` dùng collection `ai_artifacts`. Cache key gồm hash của
+payload minimum-necessary đã ẩn danh, model, pipeline, prompt và rules. `record_id`/`record_version` có thể gửi kèm
+để lưu provenance nhưng không thay thế việc kiểm tra input hash.
+
+Cache miss:
+
+```json
+{"meta":{"cache_status":"miss","api_calls":1,"total_tokens":1234}}
+```
+
+Cache hit:
+
+```json
+{"meta":{"cache_status":"hit","api_calls":0,"total_tokens":0,"saved_tokens":1234}}
+```
+
+Nếu MongoDB/cache tạm lỗi, endpoint chạy fail-open và vẫn gọi AI; lỗi cache không làm hỏng thao tác lâm sàng.
 
 ## Kiểm thử
 

@@ -27,3 +27,12 @@ def ensure_indexes(db: Database) -> None:
         unique=True,
         partialFilterExpression={"record_id": {"$type": "string"}},
     )
+    db.clinical_record_versions.create_index(
+        [("record_id", 1), ("version", 1)], unique=True
+    )
+    db.clinical_record_versions.create_index(
+        [("patient_id", 1), ("record_id", 1), ("version", -1)]
+    )
+    db.ai_artifacts.create_index("cache_key", unique=True)
+    db.ai_artifacts.create_index([("record_id", 1), ("record_version", -1)])
+    db.ai_artifacts.create_index([("artifact_type", 1), ("input_hash", 1), ("created_at", -1)])

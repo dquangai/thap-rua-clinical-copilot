@@ -2,12 +2,16 @@ import json
 import re
 import sys
 import time
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from app.ai_cache import get_cached, make_cache_key, store_cached
+from app.database import get_database
 from app.telemetry import write_api_usage
+from app.versioning import content_hash
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 AI_PACKAGE_ROOT = REPO_ROOT / "backend" / "ai"
@@ -18,6 +22,7 @@ from clinical_checker.cli import load_rules  # noqa: E402
 from clinical_checker.config import Settings as CheckerSettings  # noqa: E402
 from clinical_checker.pipeline import (  # noqa: E402
     CriteriaValidationError,
+    SYSTEM_PROMPT,
     extract_required_criteria,
     run_check,
 )
@@ -56,20 +61,94 @@ COUNSELING_SYSTEM_PROMPT = (
 class CheckRecordRequest(BaseModel):
     record: dict[str, Any]
     dry_run: bool = Field(default=False, description="Chỉ redact + quét PII, không gọi LLM")
+    include_criteria: list[str] | None = Field(default=None, description="Chỉ kiểm tra các tiêu chí này")
+    exclude_criteria: list[str] = Field(default_factory=list, description="Bỏ qua các tiêu chí đã được duyệt")
+    record_id: str | None = None
+    record_version: int | None = Field(default=None, ge=1)
 
 
 class GenerateCounselingRequest(BaseModel):
     record: dict[str, Any]
+    record_id: str | None = None
+    record_version: int | None = Field(default=None, ge=1)
+
+
+def _cache_database():
+    try:
+        return get_database()
+    except Exception:
+        return None
+
+
+def _cache_hit_response(cached: dict[str, Any]) -> dict[str, Any]:
+    response = deepcopy(cached)
+    meta = response.setdefault("meta", {})
+    saved_tokens = meta.get("original_total_tokens", meta.get("total_tokens", 0)) or 0
+    original_latency_ms = meta.get("original_latency_ms", meta.get("latency_ms", 0)) or 0
+    original_cost_usd = meta.get("original_cost_usd", meta.get("estimated_cost_usd", 0)) or 0
+    meta.update(
+        {
+            "status": "cache_hit",
+            "cache_status": "hit",
+            "api_calls": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "saved_tokens": saved_tokens,
+            "latency_ms": 0,
+            "estimated_cost_usd": 0,
+            "original_latency_ms": original_latency_ms,
+            "original_cost_usd": original_cost_usd,
+        }
+    )
+    return response
+
+
+def _read_cache(db, cache_key: str) -> dict[str, Any] | None:
+    if db is None:
+        return None
+    try:
+        return get_cached(db, cache_key)
+    except Exception:
+        return None
+
+
+def _store_cache(db, **kwargs: Any) -> None:
+    if db is None:
+        return
+    try:
+        store_cached(db, **kwargs)
+    except Exception:
+        # Cache/observability must never make a clinical AI request fail.
+        return
 
 
 @router.post("/generate-counseling")
 def generate_counseling(payload: GenerateCounselingRequest) -> dict[str, Any]:
     settings = CheckerSettings.from_env(ENV_PATH)
-    if not settings.api_key or settings.api_key == "replace_me":
-        raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI generator")
     safe_record = build_minimum_necessary_record(payload.record)
     if settings.pii_fail_closed and find_residual_pii(safe_record):
         raise HTTPException(status_code=422, detail="Phát hiện mẫu PII còn sót trong hồ sơ, đã hủy request")
+    prompt_version = content_hash(COUNSELING_SYSTEM_PROMPT)
+    cache_key, input_hash = make_cache_key(
+        "generate_counseling",
+        safe_record,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        model=settings.model,
+    )
+    cache_db = _cache_database()
+    cached = _read_cache(cache_db, cache_key)
+    if cached:
+        result = _cache_hit_response(cached)
+        write_api_usage(
+            endpoint="/api/v1/ai/generate-counseling",
+            method="POST",
+            telemetry=result["meta"],
+        )
+        return result
+    if not settings.api_key or settings.api_key == "replace_me":
+        raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI generator")
     started = time.perf_counter()
     try:
         response = call_llm(
@@ -110,32 +189,106 @@ def generate_counseling(payload: GenerateCounselingRequest) -> dict[str, Any]:
             "api_calls": 1,
         },
     )
-    return {
+    result = {
         "tu_van": tu_van,
         "meta": {
+            "status": "success",
+            "cache_status": "miss",
             "model": settings.model,
+            "pipeline_version": settings.pipeline_version,
             "latency_ms": latency_ms,
+            "input_tokens": response.input_tokens,
+            "output_tokens": response.output_tokens,
             "total_tokens": response.input_tokens + response.output_tokens,
+            "original_total_tokens": response.input_tokens + response.output_tokens,
+            "api_calls": 1,
         },
     }
+    _store_cache(
+        cache_db,
+        cache_key=cache_key,
+        input_hash=input_hash,
+        artifact_type="generate_counseling",
+        response=result,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        rules_version="none",
+        model=settings.model,
+        record_id=payload.record_id,
+        record_version=payload.record_version,
+    )
+    return result
 
 
 def execute_check(record: dict[str, Any]) -> dict[str, Any]:
     """Worker entry point; deliberately accepts only the record copied into the queue."""
     settings = CheckerSettings.from_env(ENV_PATH)
+    rules = _load_rules_or_503()
+    safe_record = build_minimum_necessary_record(record)
+    if settings.pii_fail_closed and find_residual_pii(safe_record):
+        raise RuntimeError("Phát hiện mẫu PII còn sót trong hồ sơ, đã hủy request")
+    prompt_version = content_hash(SYSTEM_PROMPT)
+    rules_version = content_hash(rules)
+    cache_key, input_hash = make_cache_key(
+        "clinical_compliance_check",
+        safe_record,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        rules_version=rules_version,
+        model=settings.model,
+    )
+    cache_db = _cache_database()
+    cached = _read_cache(cache_db, cache_key)
+    if cached:
+        result = _cache_hit_response(cached)
+        write_api_usage(endpoint="/api/v1/ai/jobs", method="POST", telemetry=result["meta"], status_code=200)
+        return result
     if not settings.api_key or settings.api_key == "replace_me":
         raise RuntimeError("LLM_API_KEY chưa được cấu hình cho AI checker")
-    rules = _load_rules_or_503()
     output = run_check(record, rules, settings, LOG_PATH, dry_run=False)
     write_api_usage(endpoint="/api/v1/ai/jobs", method="POST", telemetry=output.get("telemetry", {}), status_code=200)
-    return {
+    telemetry = output.get("telemetry", {})
+    criteria_catalog = {
+        criterion["item_id"]: criterion["criterion"]
+        for criterion in extract_required_criteria(rules)
+    }
+    result = {
         "run_id": output["run_id"],
         "result": output["result"],
+        "criteria_catalog": criteria_catalog,
         "meta": {
-            key: output.get("telemetry", {}).get(key)
-            for key in ("status", "model", "pipeline_version", "latency_ms", "total_tokens", "api_calls")
+            **{
+                key: telemetry.get(key)
+                for key in (
+                    "status",
+                    "model",
+                    "pipeline_version",
+                    "latency_ms",
+                    "input_tokens",
+                    "output_tokens",
+                    "total_tokens",
+                    "api_calls",
+                    "estimated_cost_usd",
+                )
+            },
+            "cache_status": "miss",
+            "original_total_tokens": telemetry.get("total_tokens") or 0,
+            "original_latency_ms": telemetry.get("latency_ms") or 0,
+            "original_cost_usd": telemetry.get("estimated_cost_usd") or 0,
         },
     }
+    _store_cache(
+        cache_db,
+        cache_key=cache_key,
+        input_hash=input_hash,
+        artifact_type="clinical_compliance_check",
+        response=result,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        rules_version=rules_version,
+        model=settings.model,
+    )
+    return result
 
 
 @router.post("/jobs", status_code=status.HTTP_202_ACCEPTED)
@@ -170,15 +323,94 @@ def _load_rules_or_503() -> dict[str, Any]:
 @router.post("/check-record")
 def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
     settings = CheckerSettings.from_env(ENV_PATH)
-    if not payload.dry_run and (not settings.api_key or settings.api_key == "replace_me"):
-        raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI checker")
     rules = _load_rules_or_503()
     criteria_catalog = {
         criterion["item_id"]: criterion["criterion"]
         for criterion in extract_required_criteria(rules)
     }
+    known_ids = set(criteria_catalog)
+    included = set(payload.include_criteria) if payload.include_criteria is not None else None
+    excluded = set(payload.exclude_criteria)
+    requested_ids = (included or set()) | excluded
+    unknown_ids = sorted(requested_ids - known_ids)
+    if unknown_ids:
+        raise HTTPException(status_code=422, detail=f"Tiêu chí không tồn tại: {', '.join(unknown_ids)}")
+    if included is not None and included & excluded:
+        overlap = ", ".join(sorted(included & excluded))
+        raise HTTPException(status_code=422, detail=f"Tiêu chí vừa được chọn vừa bị loại trừ: {overlap}")
+
+    if payload.dry_run:
+        try:
+            output = run_check(
+                payload.record,
+                rules,
+                settings,
+                LOG_PATH,
+                dry_run=True,
+                include_criteria=included,
+                exclude_criteria=excluded,
+            )
+        except CriteriaValidationError as exc:
+            raise HTTPException(status_code=502, detail=f"Kết quả AI không hợp lệ: {exc}") from exc
+        except RuntimeError as exc:
+            message = str(exc)
+            raise HTTPException(status_code=422 if "PII" in message else 502, detail=message) from exc
+        telemetry = output.get("telemetry", {})
+        meta = {
+            "status": telemetry.get("status"),
+            "model": telemetry.get("model"),
+            "pipeline_version": telemetry.get("pipeline_version"),
+            "latency_ms": telemetry.get("latency_ms"),
+            "total_tokens": telemetry.get("total_tokens"),
+            "api_calls": telemetry.get("api_calls"),
+            "input_tokens": telemetry.get("input_tokens"),
+            "output_tokens": telemetry.get("output_tokens"),
+            "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
+            "criteria_count": telemetry.get("criteria_count"),
+            "included_by_request_count": telemetry.get("included_by_request_count"),
+            "excluded_by_request_count": telemetry.get("excluded_by_request_count"),
+            "cache_status": "bypass",
+        }
+        write_api_usage(endpoint="/api/v1/ai/check-record", method="POST", telemetry=telemetry, status_code=200)
+        return {"run_id": output["run_id"], "safe_record": output["safe_record"], "meta": meta}
+
+    safe_record = build_minimum_necessary_record(payload.record)
+    if settings.pii_fail_closed and find_residual_pii(safe_record):
+        raise HTTPException(status_code=422, detail="Phát hiện mẫu PII còn sót trong hồ sơ, đã hủy request")
+    prompt_version = content_hash(SYSTEM_PROMPT)
+    rules_version = content_hash(rules)
+    cache_input = {
+        "record": safe_record,
+        "include_criteria": sorted(included) if included is not None else None,
+        "exclude_criteria": sorted(excluded),
+    }
+    cache_key, input_hash = make_cache_key(
+        "clinical_compliance_check",
+        cache_input,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        rules_version=rules_version,
+        model=settings.model,
+    )
+    cache_db = _cache_database()
+    cached = _read_cache(cache_db, cache_key)
+    if cached:
+        result = _cache_hit_response(cached)
+        write_api_usage(endpoint="/api/v1/ai/check-record", method="POST", telemetry=result["meta"], status_code=200)
+        return result
+    if not settings.api_key or settings.api_key == "replace_me":
+        raise HTTPException(status_code=503, detail="LLM_API_KEY chưa được cấu hình cho AI checker")
+
     try:
-        output = run_check(payload.record, rules, settings, LOG_PATH, dry_run=payload.dry_run)
+        output = run_check(
+            payload.record,
+            rules,
+            settings,
+            LOG_PATH,
+            dry_run=False,
+            include_criteria=included,
+            exclude_criteria=excluded,
+        )
     except CriteriaValidationError as exc:
         raise HTTPException(status_code=502, detail=f"Kết quả AI không hợp lệ: {exc}") from exc
     except RuntimeError as exc:
@@ -197,12 +429,30 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         "input_tokens": telemetry.get("input_tokens"),
         "output_tokens": telemetry.get("output_tokens"),
         "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
-    }
-    if payload.dry_run:
-        return {"run_id": output["run_id"], "safe_record": output["safe_record"], "meta": meta}
-    return {
+        "criteria_count": telemetry.get("criteria_count"),
+        "included_by_request_count": telemetry.get("included_by_request_count"),
+        "excluded_by_request_count": telemetry.get("excluded_by_request_count"),
+        "cache_status": "miss",
+        "original_total_tokens": telemetry.get("total_tokens") or 0,    }
+    meta["original_latency_ms"] = telemetry.get("latency_ms") or 0
+    meta["original_cost_usd"] = telemetry.get("estimated_cost_usd") or 0
+    result = {
         "run_id": output["run_id"],
         "result": output["result"],
         "criteria_catalog": criteria_catalog,
         "meta": meta,
     }
+    _store_cache(
+        cache_db,
+        cache_key=cache_key,
+        input_hash=input_hash,
+        artifact_type="clinical_compliance_check",
+        response=result,
+        pipeline_version=settings.pipeline_version,
+        prompt_version=prompt_version,
+        rules_version=rules_version,
+        model=settings.model,
+        record_id=payload.record_id,
+        record_version=payload.record_version,
+    )
+    return result

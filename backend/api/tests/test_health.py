@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.config import Settings
 from app.main import app
 
 
@@ -9,7 +10,7 @@ def test_health():
     assert response.json()["service"] == "clinical-api"
 
 
-def test_patient_and_clinical_record_routes_are_public():
+def test_clinical_record_reads_are_public_and_mutations_require_authentication():
     schema = TestClient(app).get("/openapi.json").json()
     paths = schema["paths"]
     assert "/api/v1/patients/{patient_id}" in paths
@@ -17,6 +18,14 @@ def test_patient_and_clinical_record_routes_are_public():
     assert {"get", "post"}.issubset(records)
     record = paths["/api/v1/patients/{patient_id}/clinical-records/{record_id}"]
     assert {"get", "patch"}.issubset(record)
-    for operations in (records, record):
-        for operation in operations.values():
-            assert "security" not in operation
+    assert "security" not in records["get"]
+    assert "security" in records["post"]
+    assert "security" not in record["get"]
+    assert "security" in record["patch"]
+
+def test_cors_origins_support_multiple_frontends():
+    settings = Settings(
+        frontend_origin="https://clinic.example/",
+        frontend_origins="http://127.0.0.1:5173, https://clinic.example",
+    )
+    assert settings.cors_origins == ["https://clinic.example", "http://127.0.0.1:5173"]

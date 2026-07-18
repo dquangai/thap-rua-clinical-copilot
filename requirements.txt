@@ -1,0 +1,8 @@
+# Python dependencies for the Thap Rua Clinical Copilot project.
+# Install with:  pip install -r requirements.txt
+#
+# - backend/api (FastAPI + MongoDB + AI router): listed in the file below.
+# - backend/ai (clinical_checker - record compliance check + counseling record
+#   generation pipeline): uses the Python standard library only, no extra packages.
+# - scripts/ (export_ai_evidence, load_test_ai_jobs): standard library only.
+-r backend/api/requirements.txt

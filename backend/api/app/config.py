@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
+    frontend_origins: str = ""
     mongodb_uri: str = ""
     mongodb_database: str = "thap_rua_clinical"
     supabase_url: str = ""
@@ -29,6 +30,11 @@ class Settings(BaseSettings):
     @property
     def openai_configured(self) -> bool:
         return bool(self.openai_api_key and self.openai_model)
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = [self.frontend_origin, *self.frontend_origins.split(",")]
+        return list(dict.fromkeys(origin.strip().rstrip("/") for origin in origins if origin.strip()))
 
 
 @lru_cache
