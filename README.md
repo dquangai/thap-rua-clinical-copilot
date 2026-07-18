@@ -114,6 +114,7 @@ python scripts/load_test_ai_jobs.py                 # load test hàng đợi AI
 | [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md) | Hướng dẫn chạy checker qua CLI/API |
 | [docs/ai-async-jobs-rate-limits.md](docs/ai-async-jobs-rate-limits.md) | Hàng đợi AI jobs, rate limit, chịu tải đồng thời |
 | [docs/document-versioning-ai-cache.md](docs/document-versioning-ai-cache.md) | Phiên bản hoá hồ sơ và cache kết quả AI |
+| [docs/pilot-plan.md](docs/pilot-plan.md) | Kế hoạch pilot 4 tuần, unit economics thực đo và mô hình giá SaaS |
 
 ## Bảo mật & dữ liệu
 
