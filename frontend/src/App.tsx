@@ -1096,7 +1096,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/dang-nhap" element={<LoginPage />} />
-      <Route path="/" element={<Navigate to={AUTH_BYPASS ? '/ho-so-benh-an' : '/dang-nhap'} replace />} />
+      <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>

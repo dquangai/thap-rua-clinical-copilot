@@ -11,7 +11,6 @@ import type { AuthSession, AuthStatus, AuthTokens, AuthUser } from '../types/aut
 const SESSION_STORAGE_KEY = 'thap-rua.auth.session.v1'
 const REFRESH_EARLY_SECONDS = 60
 
-<<<<<<< HEAD
 export const DEMO_DOCTOR_EMAIL = 'admin@thaprua.vn'
 export const DEMO_DOCTOR_PASSWORD = 'Admin@123'
 export const DEMO_ACCOUNTS = [
@@ -19,11 +18,6 @@ export const DEMO_ACCOUNTS = [
   { id: 'demo-doctor-hanh', email: 'myhanh@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Lê Thị Mỹ Hạnh', department: 'Khoa Sản' },
   { id: 'demo-doctor-huong', email: 'thihuong@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Nguyễn Thị Hương', department: 'Khoa Sản' },
 ]
-=======
-// Tài khoản demo đăng nhập cục bộ, không cần Supabase.
-export const DEMO_DOCTOR_EMAIL = 'bacsi.demo@thaprua.vn'
-export const DEMO_DOCTOR_PASSWORD = 'Demo@123'
->>>>>>> 75e81f8cea0395a4403535953982e2d9325aad19
 
 interface AuthStore {
   status: AuthStatus
