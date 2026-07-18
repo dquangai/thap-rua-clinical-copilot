@@ -5,7 +5,6 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.auth import CurrentUser, get_current_user
 from app.config import Settings, get_settings
 
 router = APIRouter(prefix='/lab-analysis', tags=['lab-analysis'])
@@ -47,7 +46,6 @@ def extract_output_text(payload: dict) -> str:
 @router.post('/narrative', response_model=LabNarrativeResponse)
 def create_lab_narrative(
     payload: LabNarrativeRequest,
-    _: CurrentUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ):
     if not settings.openai_configured:

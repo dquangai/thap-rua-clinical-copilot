@@ -159,9 +159,6 @@ Mở **thap-rua-clinical-api → Environment** và nhập:
 |---|---|
 | `MONGODB_URI` | Connection string MongoDB Atlas |
 | `FRONTEND_ORIGIN` | URL frontend Render, không có `/` cuối |
-| `SUPABASE_URL` | URL Supabase project |
-| `SUPABASE_PUBLISHABLE_KEY` | Publishable key của Supabase |
-| `SUPABASE_SECRET_KEY` | Secret/service key; chỉ đặt ở backend |
 | `OPENAI_API_KEY` | OpenAI API key |
 | `LLM_API_KEY` | Có thể dùng cùng OpenAI key cho AI checker fallback |
 
@@ -177,7 +174,7 @@ OPENAI_MODEL=gpt-5.6-sol
 
 Xác nhận chính xác tên database. Nếu database thực tế là `thap_rua_clinical`, sửa `MONGODB_DATABASE` trong `render.yaml` và trên Render trước khi deploy.
 
-Không đặt OpenAI key hoặc Supabase secret trong biến có tiền tố `VITE_` vì các biến này xuất hiện trong bundle trình duyệt.
+Không đặt OpenAI key trong biến có tiền tố `VITE_` vì các biến này xuất hiện trong bundle trình duyệt.
 
 ## 7. Cấu hình frontend trên Render
 
@@ -272,7 +269,7 @@ Nếu `/health` trả `200` nhưng `/ready` trả `503`, kiểm tra:
 2. Mở DevTools → **Network**.
 3. Xác nhận request gọi backend Render, không gọi `localhost`.
 4. Refresh trực tiếp tại một route con để kiểm tra SPA rewrite.
-5. Kiểm tra đăng nhập, bệnh nhân, AI checker và báo cáo xét nghiệm.
+5. Kiểm tra bệnh nhân, AI checker và báo cáo xét nghiệm.
 
 Nếu trình duyệt báo CORS, kiểm tra `FRONTEND_ORIGIN` có đúng chính xác URL frontend hay không rồi redeploy backend.
 
@@ -306,7 +303,7 @@ Không rollback database bằng cách xóa collection. Thay đổi dữ liệu c
 - [ ] Render Blueprint theo dõi `staging`.
 - [ ] Backend dùng instance type **Free**, không phải `Starter`.
 - [ ] Auto-Deploy đặt thành **After CI Checks Pass**.
-- [ ] Backend đã có đủ MongoDB, Supabase và OpenAI secrets.
+- [ ] Backend đã có đủ MongoDB và OpenAI secrets.
 - [ ] `VITE_API_BASE_URL` trỏ đúng backend `/api/v1`.
 - [ ] `FRONTEND_ORIGIN` trùng chính xác URL frontend.
 - [ ] MongoDB Atlas cho phép kết nối từ Render.

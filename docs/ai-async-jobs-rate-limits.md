@@ -274,7 +274,7 @@ trước khi sleep. Việc này tránh một request đang backoff chiếm chỗ
 
 ### 7.3 Lỗi không retry
 
-Các lỗi HTTP khác, ví dụ authentication, payload sai hoặc request validation, không được retry vì retry cùng payload
+Các lỗi HTTP khác, ví dụ payload sai hoặc request validation, không được retry vì retry cùng payload
 không có khả năng tự khắc phục vấn đề.
 
 Provider response body không được chèn vào error message hoặc log vì có khả năng chứa dữ liệu bắt nguồn từ request.
@@ -533,7 +533,6 @@ Nên chỉ sử dụng khoảng 70–80% quota provider để giữ headroom cho
 - Không ghi raw bệnh án, prompt hoặc provider response vào application log.
 - Tiếp tục áp minimum-necessary transformation và PII fail-closed trước provider call.
 - Đánh giá DPA, retention, data residency và Zero Data Retention theo yêu cầu bệnh viện.
-- Job endpoint cần áp authentication/authorization trước khi public production.
 
 ## 15. Troubleshooting
 
@@ -581,7 +580,6 @@ trước khi yêu cầu recovery sau restart.
 
 ## 16. Checklist trước production
 
-- [ ] API job endpoints được bảo vệ bằng authentication và authorization.
 - [ ] Chỉ chạy một API process khi còn dùng in-memory queue.
 - [ ] `AI_JOB_WORKERS`, `AI_JOB_MAX_QUEUE` và `LLM_MAX_CONCURRENCY` được cấu hình rõ ràng.
 - [ ] Quota RPM/input TPM/output TPM thật đã được ghi nhận từ provider dashboard.
