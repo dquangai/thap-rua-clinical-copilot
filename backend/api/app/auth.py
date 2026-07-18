@@ -13,6 +13,8 @@ bearer = HTTPBearer(auto_error=False)
 class CurrentUser:
     id: str
     email: str | None
+    role: str = "DOCTOR"
+    active: bool = True
 
 
 def get_current_user(
@@ -40,3 +42,20 @@ def get_current_user(
         return CurrentUser(id=payload["id"], email=payload.get("email"))
     except (httpx.HTTPError, KeyError, ValueError):
         raise unauthorized from None
+
+
+def require_active_user(
+    user: CurrentUser = Depends(get_current_user),
+):
+    from app.database import get_admin_client
+
+    rows = get_admin_client().table("profiles").select("role,active").eq("id", user.id).limit(1).execute().data
+    if not rows or not rows[0]["active"]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    return CurrentUser(id=user.id, email=user.email, role=rows[0]["role"], active=True)
+
+
+def require_admin(user: CurrentUser = Depends(require_active_user)) -> CurrentUser:
+    if user.role not in {"ADMIN", "SUPER_ADMIN"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Administrator access required")
+    return user

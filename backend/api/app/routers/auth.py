@@ -2,7 +2,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.security import HTTPAuthorizationCredentials
 
-from app.auth import CurrentUser, bearer, get_current_user
+from app.auth import CurrentUser, bearer, require_active_user
 from app.config import Settings, get_settings
 from app.schemas import AuthTokens, AuthUser, LoginRequest, RefreshTokenRequest
 
@@ -97,5 +97,5 @@ def logout(
 
 
 @router.get("/me", response_model=AuthUser)
-def me(user: CurrentUser = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email}
+def me(user: CurrentUser = Depends(require_active_user)):
+    return {"id": user.id, "email": user.email, "role": user.role, "active": user.active}

@@ -128,3 +128,24 @@ class AuthTokens(ApiModel):
 class AuthUser(ApiModel):
     id: UUID
     email: EmailStr | None = None
+    role: str = "DOCTOR"
+    active: bool = True
+
+
+class AdminUserCreate(ApiModel):
+    email: EmailStr
+    full_name: str = Field(min_length=1, max_length=200)
+    password: str = Field(min_length=8, max_length=200)
+    department_id: UUID | None = None
+    role: str = Field(default="DOCTOR", pattern="^(ADMIN|DOCTOR)$")
+
+
+class AdminUserUpdate(ApiModel):
+    full_name: str | None = Field(default=None, min_length=1, max_length=200)
+    department_id: UUID | None = None
+    role: str | None = Field(default=None, pattern="^(ADMIN|DOCTOR)$")
+    active: bool | None = None
+
+
+class AdminRecordAction(ApiModel):
+    reason: str = Field(min_length=3, max_length=500)

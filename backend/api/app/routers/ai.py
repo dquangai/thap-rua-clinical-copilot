@@ -7,6 +7,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from app.telemetry import write_api_usage
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 AI_PACKAGE_ROOT = REPO_ROOT / "backend" / "ai"
@@ -111,6 +112,7 @@ def execute_check(record: dict[str, Any]) -> dict[str, Any]:
         raise RuntimeError("LLM_API_KEY chưa được cấu hình cho AI checker")
     rules = _load_rules_or_503()
     output = run_check(record, rules, settings, LOG_PATH, dry_run=False)
+    write_api_usage(endpoint="/api/v1/ai/jobs", method="POST", telemetry=output.get("telemetry", {}), status_code=200)
     return {
         "run_id": output["run_id"],
         "result": output["result"],
@@ -169,6 +171,7 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         status_code = 422 if "PII" in message else 502
         raise HTTPException(status_code=status_code, detail=message) from exc
     telemetry = output.get("telemetry", {})
+    write_api_usage(endpoint="/api/v1/ai/check-record", method="POST", telemetry=telemetry, status_code=200)
     meta = {
         "status": telemetry.get("status"),
         "model": telemetry.get("model"),
@@ -176,6 +179,9 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         "latency_ms": telemetry.get("latency_ms"),
         "total_tokens": telemetry.get("total_tokens"),
         "api_calls": telemetry.get("api_calls"),
+        "input_tokens": telemetry.get("input_tokens"),
+        "output_tokens": telemetry.get("output_tokens"),
+        "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
     }
     if payload.dry_run:
         return {"run_id": output["run_id"], "safe_record": output["safe_record"], "meta": meta}

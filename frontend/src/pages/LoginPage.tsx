@@ -11,7 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import thapRuaMark from '../assets/thap-rua-mark.svg'
-import { DEMO_DOCTOR_EMAIL, DEMO_DOCTOR_PASSWORD, useAuthStore } from '../store/useAuthStore'
+import { DEMO_ACCOUNTS, DEMO_DOCTOR_EMAIL, DEMO_DOCTOR_PASSWORD, useAuthStore } from '../store/useAuthStore'
 import styles from './LoginPage.module.scss'
 
 type LoginLocationState = {
@@ -45,28 +45,37 @@ export default function LoginPage() {
 
   useEffect(() => clearError, [clearError])
 
-  const navigateToWorkspace = () => {
+  const navigateAfterLogin = (isAdmin: boolean) => {
     const state = location.state as LoginLocationState | null
-    const destination = `${state?.from?.pathname ?? '/ho-so-benh-an'}${state?.from?.search ?? ''}`
+    const requestedPath = state?.from?.pathname
+    const destination = isAdmin
+      ? '/admin'
+      : `${requestedPath && requestedPath !== '/admin' ? requestedPath : '/ho-so-benh-an'}${state?.from?.search ?? ''}`
     navigate(destination, { replace: true })
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    // Tài khoản demo đăng nhập cục bộ, không cần Supabase.
-    if (email === DEMO_DOCTOR_EMAIL && password === DEMO_DOCTOR_PASSWORD) {
-      enterDemoMode()
-      navigateToWorkspace()
+    const demoAccount = DEMO_ACCOUNTS.find((account) => account.email === email.trim() && account.password === password)
+    if (demoAccount) {
+      enterDemoMode(demoAccount.email)
+      navigateAfterLogin(demoAccount.role === 'SUPER_ADMIN')
       return
     }
 
     try {
       await login(email, password)
-      navigateToWorkspace()
+      const role = useAuthStore.getState().user?.role
+      navigateAfterLogin(role === 'ADMIN' || role === 'SUPER_ADMIN')
     } catch {
       // The auth store exposes the API error to the form.
     }
+  }
+
+  const handleDemoMode = () => {
+    enterDemoMode()
+    navigateAfterLogin(true)
   }
 
   return (
