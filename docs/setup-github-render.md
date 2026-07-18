@@ -1,184 +1,183 @@
-# Hướng dẫn thiết lập GitHub CI/CD và Render
+# Thiết lập CI/CD GitHub và deploy Render từ `staging`
 
-Tài liệu này liệt kê các việc cần làm để CI và Render triển khai trực tiếp **Tháp Rùa Clinical Copilot** từ nhánh `staging`.
+Tài liệu này hướng dẫn cấu hình luồng triển khai hiện tại của **Tháp Rùa Clinical Copilot**:
 
-## 1. Trạng thái hiện tại
-
-- CI được định nghĩa tại `.github/workflows/ci.yml`.
-- Render Blueprint được định nghĩa tại `render.yaml`.
-- Render sử dụng trực tiếp branch `staging`.
-- CI chạy khi push vào `staging`, `main` hoặc tạo pull request vào `main`.
-- Render chỉ tự động deploy khi GitHub CI thành công.
-- Backend có `/health` để kiểm tra tiến trình và `/ready` để ping MongoDB.
-
-Trước khi thao tác, chạy:
-
-```powershell
-git status
-git branch -vv
-git fetch origin
+```text
+push staging → GitHub Actions CI → CI pass → Render deploy staging
 ```
 
-## 2. Cấp quyền cập nhật GitHub Workflow
+Render triển khai trực tiếp từ `staging`; không cần merge vào `main` để cập nhật môi trường này.
 
-Nếu push báo lỗi:
+## 1. Thành phần đã có trong repository
+
+| File | Chức năng |
+|---|---|
+| `.github/workflows/ci.yml` | Kiểm tra conflict trong backend, compile Python và chạy test backend/AI |
+| `render.yaml` | Tạo backend Web Service và frontend Static Site trên Render |
+| `backend/api/app/main.py` | Cung cấp `/health` và `/ready` cho Render |
+
+Workflow chạy khi:
+
+- Push vào `staging` hoặc `main`.
+- Tạo pull request vào `main`.
+- Chạy thủ công bằng **Actions → CI → Run workflow**.
+
+Hai service trong `render.yaml` đều theo dõi branch `staging` và dùng `autoDeployTrigger: checksPass`.
+
+## 2. Chuẩn bị GitHub credential
+
+GitHub không cho token thiếu quyền workflow tạo hoặc cập nhật `.github/workflows/ci.yml`.
+
+Nếu push báo lỗi sau:
 
 ```text
 refusing to allow an OAuth App to create or update workflow
 without workflow scope
 ```
 
-credential GitHub trên máy chưa có quyền cập nhật `.github/workflows/*.yml`.
+hãy tạo Personal Access Token mới.
 
-### Tạo token
+### Quyền token
 
-1. Mở GitHub **Settings → Developer settings → Personal access tokens**.
-2. Tạo token mới.
-3. Nếu dùng classic token, bật:
-   - `repo`
-   - `workflow`
-4. Nếu dùng fine-grained token, chọn đúng repository và cấp **Workflows: Read and write**.
-5. Sao chép token và lưu tại nơi an toàn. GitHub chỉ hiển thị token một lần.
+- Token classic: chọn `repo` và `workflow`.
+- Fine-grained token: chọn đúng repository và cấp **Workflows: Read and write**.
 
-### Thay credential trên Windows
+### Xóa credential cũ trên Windows
 
-1. Mở **Credential Manager**.
-2. Chọn **Windows Credentials**.
-3. Xóa credential liên quan đến `github.com`.
-4. Push lại và dùng:
-   - Username: tên tài khoản GitHub.
-   - Password: token vừa tạo, không dùng mật khẩu GitHub.
-
-Không ghi token vào `.env`, source code hoặc tài liệu trong repository.
-
-## 3. Commit cấu hình CI/CD trên staging
-
-Đồng bộ thông tin remote trước:
+Chạy trong PowerShell:
 
 ```powershell
-git fetch origin
-git switch staging
+@"
+protocol=https
+host=github.com
+"@ | git credential-manager erase
 ```
 
-Kiểm tra thay đổi:
+Nếu Git Credential Manager không khả dụng, mở **Credential Manager → Windows Credentials** và xóa credential liên quan đến `github.com`.
 
-```powershell
-git status
-git diff --check
-git diff -- .github/workflows/ci.yml render.yaml backend/api/app/main.py backend/api/tests/test_health.py
-```
-
-Chạy kiểm thử local:
-
-```powershell
-npm run build
-
-cd backend/api
-python -m pytest
-cd ../..
-```
-
-Commit các file CI/CD:
-
-```powershell
-git add .github/workflows/ci.yml `
-  render.yaml `
-  backend/api/app/main.py `
-  backend/api/tests/test_health.py `
-  docs/setup-github-render.md
-
-git commit -m "ci: restore GitHub Actions and Render deployment"
-```
-
-Đưa commit mới nhất từ `main` vào `staging`:
-
-```powershell
-git merge origin/main
-```
-
-Nếu có conflict, xử lý conflict, chạy lại build/test rồi commit. Sau đó push:
+Push lại:
 
 ```powershell
 git push origin staging
 ```
 
-## 4. Luồng deploy từ staging
+Khi được hỏi:
 
-Sau khi push lên `staging`:
+```text
+Username: <tên tài khoản GitHub>
+Password: <Personal Access Token>
+```
 
-1. Mở tab **Actions** của repository `dquangai/thap-rua-clinical-copilot`.
-2. Chọn workflow **CI** của commit vừa push.
-3. Chờ các check sau thành công:
-   - `Conflict markers`
-   - `Backend tests`
-   - `Frontend build`
-4. Render nhận trạng thái checks của commit trên `staging`.
-5. Khi tất cả checks pass, Render tự động deploy đúng commit đó.
+Không dùng mật khẩu GitHub và không chèn token trực tiếp vào URL remote.
 
-Pull request `staging → main` chỉ dùng khi muốn phát hành hoặc đồng bộ nhánh ổn định; không phải điều kiện để deploy môi trường Render hiện tại.
+## 3. Kiểm tra và push nhánh staging
 
-## 5. Bật Branch Protection cho staging
+Chuyển sang đúng nhánh và cập nhật thông tin remote:
 
-Trong GitHub repository:
+```powershell
+git switch staging
+git fetch origin
+git status
+```
 
-1. Mở **Settings → Rules → Rulesets**.
-2. Tạo branch ruleset áp dụng cho `staging`.
-3. Nếu team vẫn cần push trực tiếp để deploy, không bật **Require a pull request before merging** cho `staging`.
-4. Bật **Require status checks to pass**.
-5. Chọn ba status check:
-   - `Conflict markers`
-   - `Backend tests`
-   - `Frontend build`
-6. Bật **Require branches to be up to date before merging** nếu muốn CI luôn chạy trên base mới nhất.
-7. Chặn force push và deletion đối với `staging`.
+Trước khi commit, chạy kiểm tra backend local:
 
-## 6. Tạo Render Blueprint
+```powershell
+cd backend/api
+python -m pytest
+cd ../..
 
-Thực hiện sau khi `render.yaml` đã có trên branch `staging`:
+git diff --check
+```
 
-1. Đăng nhập tại <https://dashboard.render.com>.
+Commit thay đổi:
+
+```powershell
+git add .github/workflows/ci.yml render.yaml docs/setup-github-render.md
+git commit -m "ci: deploy staging through GitHub Actions and Render"
+git push origin staging
+```
+
+Nếu có thay đổi backend liên quan `/ready`, thêm cả các file đó trước khi commit:
+
+```powershell
+git add backend/api/app/main.py backend/api/tests/test_health.py
+```
+
+## 4. Kiểm tra GitHub Actions
+
+Sau khi push:
+
+1. Mở repository trên GitHub.
+2. Chọn tab **Actions**.
+3. Mở workflow **CI** của commit mới nhất trên `staging`.
+4. Xác nhận job `Backend tests` thành công. Job này gồm:
+   - Kiểm tra conflict marker trong `backend` và `rules`.
+   - Compile source Python.
+   - Chạy API tests.
+   - Chạy AI pipeline tests.
+
+Nếu workflow không xuất hiện, kiểm tra:
+
+- `.github/workflows/ci.yml` đã có trên remote `staging` chưa.
+- GitHub Actions có bị tắt tại **Settings → Actions → General** không.
+- Commit có thực sự được push vào `staging` không.
+
+Nếu CI lỗi, không chạy deploy thủ công để bỏ qua kiểm tra. Sửa lỗi, commit và push lại.
+
+## 5. Tạo Render Blueprint lần đầu
+
+Thực hiện sau khi `render.yaml` đã có trên remote `staging`:
+
+1. Đăng nhập <https://dashboard.render.com>.
 2. Chọn **New → Blueprint**.
-3. Kết nối GitHub nếu Render chưa được cấp quyền.
-4. Chọn repository `dquangai/thap-rua-clinical-copilot`.
+3. Kết nối GitHub và cấp quyền truy cập repository.
+4. Chọn `dquangai/thap-rua-clinical-copilot`.
 5. Chọn branch `staging`.
-6. Render đọc `render.yaml` và đề xuất hai service:
-   - `thap-rua-clinical-api`
-   - `thap-rua-clinical-web`
-7. Xác nhận tạo Blueprint.
+6. Render đọc `render.yaml` và tạo:
+   - `thap-rua-clinical-api`: Python Web Service.
+   - `thap-rua-clinical-web`: Static Site.
+7. Nhập các biến có `sync: false` khi Render yêu cầu.
+8. Xác nhận tạo Blueprint.
 
-Nếu tên service đã được sử dụng, đổi tên trên Render và dùng URL thực tế ở các bước tiếp theo.
+Nếu Blueprint đã tồn tại, mở Blueprint và chọn **Manual Sync** để đồng bộ thay đổi mới nhất từ `render.yaml`.
 
-## 7. Biến môi trường backend
+Trong từng service, kiểm tra tại **Settings → Build & Deploy**:
 
-Mở **thap-rua-clinical-api → Environment** và khai báo:
+```text
+Branch: staging
+Auto-Deploy: After CI Checks Pass
+```
 
-| Biến | Giá trị |
+## 6. Cấu hình backend trên Render
+
+Mở **thap-rua-clinical-api → Environment** và nhập:
+
+| Biến | Nội dung |
 |---|---|
-| `MONGODB_URI` | Connection string MongoDB Atlas production |
+| `MONGODB_URI` | Connection string MongoDB Atlas |
 | `FRONTEND_ORIGIN` | URL frontend Render, không có `/` cuối |
 | `SUPABASE_URL` | URL Supabase project |
 | `SUPABASE_PUBLISHABLE_KEY` | Publishable key của Supabase |
-| `SUPABASE_SECRET_KEY` | Secret/service key, chỉ đặt ở backend |
-| `OPENAI_API_KEY` | OpenAI API key của backend |
-| `LLM_API_KEY` | Có thể dùng cùng key để hỗ trợ AI checker fallback |
+| `SUPABASE_SECRET_KEY` | Secret/service key; chỉ đặt ở backend |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `LLM_API_KEY` | Có thể dùng cùng OpenAI key cho AI checker fallback |
 
-Các giá trị không bí mật đã nằm trong `render.yaml`, gồm:
+Các biến không bí mật đã được khai báo trong `render.yaml`:
 
 ```text
 APP_ENV=production
+PYTHON_VERSION=3.12.13
 MONGODB_DATABASE=cilinal_copilot
 PII_FAIL_CLOSED=true
 OPENAI_MODEL=gpt-5.6-sol
-PYTHON_VERSION=3.12.13
 ```
 
-Lưu ý:
+Xác nhận chính xác tên database. Nếu database thực tế là `thap_rua_clinical`, sửa `MONGODB_DATABASE` trong `render.yaml` và trên Render trước khi deploy.
 
-- Không đặt OpenAI hoặc Supabase secret trong biến có tiền tố `VITE_`.
-- Không commit secret vào Git.
-- Nếu tên database đúng thực tế là `thap_rua_clinical`, sửa đồng thời `MONGODB_DATABASE` trên Render và trong `render.yaml` trước khi deploy.
+Không đặt OpenAI key hoặc Supabase secret trong biến có tiền tố `VITE_` vì các biến này xuất hiện trong bundle trình duyệt.
 
-## 8. Biến môi trường frontend
+## 7. Cấu hình frontend trên Render
 
 Mở **thap-rua-clinical-web → Environment** và đặt:
 
@@ -186,47 +185,69 @@ Mở **thap-rua-clinical-web → Environment** và đặt:
 VITE_API_BASE_URL=https://<backend-service>.onrender.com/api/v1
 ```
 
-Ví dụ:
+Ví dụ nếu URL backend đúng bằng tên service:
 
 ```text
 VITE_API_BASE_URL=https://thap-rua-clinical-api.onrender.com/api/v1
 ```
 
-Biến `VITE_*` được đóng vào bundle lúc build. Sau khi đổi giá trị, cần redeploy frontend.
-
-Sau khi biết URL frontend chính xác, quay lại backend và đặt:
+Sau khi Render cấp URL frontend, quay lại backend và đặt:
 
 ```text
 FRONTEND_ORIGIN=https://<frontend-service>.onrender.com
 ```
 
-Sau đó redeploy backend để cập nhật CORS.
+Không thêm `/` ở cuối `FRONTEND_ORIGIN`.
 
-## 9. MongoDB Atlas
+Sau khi đổi `VITE_API_BASE_URL`, phải redeploy frontend vì biến `VITE_*` được đóng vào bundle lúc build.
 
-1. Tạo database user riêng cho production.
-2. Cấp đúng quyền cần thiết trên database ứng dụng.
-3. Trong **Network Access**, cho phép outbound IP của Render.
-4. Không giữ `0.0.0.0/0` lâu dài nếu sử dụng dữ liệu thật.
-5. Rotate ngay credential nếu từng xuất hiện trong Git hoặc log.
-6. Đưa connection string mới vào `MONGODB_URI` trên Render.
+## 8. Cấu hình MongoDB Atlas
 
-## 10. Triển khai và kiểm tra
+1. Tạo database user riêng cho môi trường staging.
+2. Chỉ cấp quyền cần thiết trên database ứng dụng.
+3. Mở **Network Access** và cho phép outbound IP của Render.
+4. Đưa connection string mới vào `MONGODB_URI` trên Render.
+5. Rotate ngay credential nếu từng xuất hiện trong Git, tài liệu hoặc log.
 
-Render được cấu hình chỉ deploy commit trên `staging` sau khi GitHub checks pass. Nếu cần chạy lại thủ công:
+Không nên giữ `0.0.0.0/0` lâu dài khi sử dụng dữ liệu thật.
 
-1. Mở service trên Render.
-2. Chọn **Manual Deploy → Deploy latest commit**.
-3. Theo dõi tab **Events** và build logs.
+## 9. Luồng deploy hằng ngày
 
-Kiểm tra backend:
+Mỗi lần cập nhật staging:
+
+```powershell
+git switch staging
+git pull --ff-only origin staging
+
+# Chỉnh sửa và kiểm tra backend
+cd backend/api
+python -m pytest
+cd ../..
+
+git add <các-file-đã-thay-đổi>
+git commit -m "<nội dung thay đổi>"
+git push origin staging
+```
+
+Sau khi push:
+
+1. GitHub Actions chạy CI.
+2. CI pass.
+3. Render nhận trạng thái checks của commit trên `staging`.
+4. Render build và deploy đúng commit đó.
+
+`main` không tham gia vào luồng deploy staging. Chỉ tạo pull request `staging → main` khi muốn cập nhật nhánh release ổn định.
+
+## 10. Kiểm tra sau deploy
+
+### Backend
 
 ```powershell
 curl.exe https://<backend-service>.onrender.com/health
 curl.exe https://<backend-service>.onrender.com/ready
 ```
 
-`/ready` phải trả về:
+Kết quả `/ready` mong đợi:
 
 ```json
 {
@@ -238,42 +259,54 @@ curl.exe https://<backend-service>.onrender.com/ready
 Nếu `/health` trả `200` nhưng `/ready` trả `503`, kiểm tra:
 
 - `MONGODB_URI`.
-- Database username/password.
-- MongoDB Atlas Network Access.
+- Username/password MongoDB.
+- Atlas Network Access.
 - Tên database.
-- DNS/TLS trong connection string.
+- DNS và TLS trong connection string.
 
-Kiểm tra frontend:
+### Frontend
 
 1. Mở URL frontend.
-2. Mở DevTools → Network.
+2. Mở DevTools → **Network**.
 3. Xác nhận request gọi backend Render, không gọi `localhost`.
 4. Refresh trực tiếp tại một route con để kiểm tra SPA rewrite.
-5. Kiểm tra login, danh sách bệnh nhân, AI checker và báo cáo xét nghiệm.
+5. Kiểm tra đăng nhập, bệnh nhân, AI checker và báo cáo xét nghiệm.
 
-## 11. Rollback
+Nếu trình duyệt báo CORS, kiểm tra `FRONTEND_ORIGIN` có đúng chính xác URL frontend hay không rồi redeploy backend.
 
-Nếu production lỗi:
+## 11. Xử lý deploy lỗi
 
-1. Mở service trên Render → **Events**.
+### CI pass nhưng Render không deploy
+
+Kiểm tra:
+
+- Service đang theo dõi `staging`.
+- Auto-Deploy là **After CI Checks Pass**.
+- Render GitHub App còn quyền đọc repository và checks.
+- Commit thay đổi file phù hợp với `buildFilter` của service.
+
+Thay đổi chỉ ở frontend sẽ không deploy backend và ngược lại. Thay đổi `render.yaml` luôn được Blueprint xử lý khi sync.
+
+### Rollback
+
+1. Mở service → **Events**.
 2. Chọn deploy thành công trước đó và redeploy.
-3. Tạo `git revert` cho commit lỗi.
-4. Đưa revert qua pull request và CI như bình thường.
+3. Dùng `git revert <commit>` để hoàn tác trong Git.
+4. Push commit revert lên `staging` để CI và Render chạy lại.
 
-Không rollback database bằng cách xóa collection. Mọi thay đổi dữ liệu cần có backup và kế hoạch migration riêng.
+Không rollback database bằng cách xóa collection. Thay đổi dữ liệu cần có backup và kế hoạch migration riêng.
 
 ## 12. Checklist hoàn tất
 
-- [ ] GitHub token có quyền `workflow`.
-- [ ] `.github/workflows/ci.yml` đã được push.
-- [ ] CI trên `staging` thành công.
-- [ ] CI trên commit mới nhất của `staging` đã pass.
-- [ ] Branch protection cho `staging` đã bật.
-- [ ] Render Blueprint theo dõi branch `staging`.
-- [ ] Backend environment variables đã nhập đủ.
-- [ ] Frontend `VITE_API_BASE_URL` đúng.
-- [ ] Backend `FRONTEND_ORIGIN` đúng.
+- [ ] Token GitHub có quyền cập nhật workflow.
+- [ ] `.github/workflows/ci.yml` tồn tại trên remote `staging`.
+- [ ] Job `Backend tests` của GitHub Actions đã pass.
+- [ ] Render Blueprint theo dõi `staging`.
+- [ ] Auto-Deploy đặt thành **After CI Checks Pass**.
+- [ ] Backend đã có đủ MongoDB, Supabase và OpenAI secrets.
+- [ ] `VITE_API_BASE_URL` trỏ đúng backend `/api/v1`.
+- [ ] `FRONTEND_ORIGIN` trùng chính xác URL frontend.
 - [ ] MongoDB Atlas cho phép kết nối từ Render.
 - [ ] `/health` và `/ready` trả `200`.
-- [ ] Frontend gọi đúng backend production.
-- [ ] Không có secret trong Git history mới.
+- [ ] Frontend không gọi `localhost`.
+- [ ] Không có secret trong commit hoặc log.
