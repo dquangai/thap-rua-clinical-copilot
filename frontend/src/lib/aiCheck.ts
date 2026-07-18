@@ -1,8 +1,6 @@
 import type { PatientRecord } from '../types/clinical'
 import type { AiCheckResponse } from '../types/aiCheck'
-
-// VITE_API_BASE_URL đã bao gồm /api/v1; mặc định đi qua Vite proxy.
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
+import { API_BASE_URL } from '../api/config'
 
 // Mock data dùng 0 cho chỉ số chưa đo; checker cần null để phân biệt thiếu dữ liệu.
 const measured = (value: number | null): number | null => (value ? value : null)
