@@ -1,1 +1,0 @@
-"""Thap Rua clinical API."""
