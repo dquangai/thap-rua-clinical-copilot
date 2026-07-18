@@ -95,11 +95,26 @@ def generate_counseling(payload: GenerateCounselingRequest) -> dict[str, Any]:
     tu_van = tu_van.replace("**", "")
     if not tu_van:
         raise HTTPException(status_code=502, detail="LLM không trả về nội dung tư vấn")
+    latency_ms = round((time.perf_counter() - started) * 1000, 2)
+    write_api_usage(
+        endpoint="/api/v1/ai/generate-counseling",
+        method="POST",
+        telemetry={
+            "status": "success",
+            "model": settings.model,
+            "pipeline_version": settings.pipeline_version,
+            "latency_ms": latency_ms,
+            "input_tokens": response.input_tokens,
+            "output_tokens": response.output_tokens,
+            "total_tokens": response.input_tokens + response.output_tokens,
+            "api_calls": 1,
+        },
+    )
     return {
         "tu_van": tu_van,
         "meta": {
             "model": settings.model,
-            "latency_ms": round((time.perf_counter() - started) * 1000, 2),
+            "latency_ms": latency_ms,
             "total_tokens": response.input_tokens + response.output_tokens,
         },
     }
