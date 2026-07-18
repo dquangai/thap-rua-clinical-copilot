@@ -50,14 +50,12 @@ import {
   X,
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
-import { medications, type Medication } from './data/medications'
 import { buildCheckerRecord, checkClinicalRecord, generateCounseling } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import { fetchLabSummaryPdf, requestLabNarrative } from './api/labAnalysisApi'
-import { bookFollowUp, fetchAppointmentSchedule, suggestFollowUp, type ScheduleResponse, type SuggestFollowUpResponse } from './api/appointmentsApi'
 import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
@@ -882,130 +880,6 @@ function CounselingModal({
   )
 }
 
-type AppointmentState = {
-  open: boolean
-  loading: boolean
-  error: string
-  data: SuggestFollowUpResponse | null
-  selected: string
-  booking: boolean
-  bookedDate: string
-}
-
-const APPOINTMENT_LOAD_LABELS: Record<string, string> = {
-  thua: 'Còn thưa',
-  vua: 'Vừa phải',
-  dong: 'Khá đông',
-  day: 'Đã đầy',
-}
-
-const APPOINTMENT_SOURCE_LABELS: Record<string, string> = {
-  ai: 'AI phân tích theo hồ sơ',
-  treatment_plan: 'theo hướng xử trí',
-  pregnancy_weeks: 'theo tuổi thai',
-  default: 'theo lịch khám định kỳ',
-}
-
-const formatAppointmentDate = (iso: string) => {
-  const [year, month, day] = iso.split('-')
-  return `${day}/${month}/${year}`
-}
-
-function AppointmentModal({
-  patient,
-  state,
-  onSelect,
-  onConfirm,
-  onClose,
-}: {
-  patient: PatientRecord
-  state: AppointmentState
-  onSelect: (date: string) => void
-  onConfirm: () => void
-  onClose: () => void
-}) {
-  const { loading, error, data, selected, booking, bookedDate } = state
-  return createPortal(
-    <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Đặt lịch tái khám">
-      <div className={`${styles.aiModal} ${styles.apptModal}`}>
-        <header className={styles.aiModalHead}>
-          <div><CalendarDays size={17} /><h2>Đặt lịch tái khám</h2></div>
-          <button type="button" onClick={onClose} aria-label="Đóng đặt lịch tái khám"><X size={16} /></button>
-        </header>
-        <div className={styles.apptBody}>
-          {loading && (
-            <div className={styles.aiLoading}>
-              <LoaderCircle size={22} className={styles.aiSpinner} />
-              <p>AI đang phân tích hồ sơ (đã ẩn thông tin định danh) để đề xuất lịch tái khám...</p>
-            </div>
-          )}
-          {!loading && error && <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>}
-          {!loading && !error && bookedDate && (
-            <div className={styles.apptSuccess}>
-              <CircleCheck size={22} />
-              <div>
-                <strong>Đã hẹn tái khám ngày {formatAppointmentDate(bookedDate)}</strong>
-                <p>Bệnh nhân {patient.fullName} ({patient.medicalId}). Lịch đã được ghi nhận vào tải của ngày hẹn.</p>
-              </div>
-            </div>
-          )}
-          {!loading && !error && !bookedDate && data && (
-            <>
-              <p className={styles.apptIntro}>
-                Hẹn sau <strong>{data.interval_days} ngày</strong> ({APPOINTMENT_SOURCE_LABELS[data.interval_source]}),
-                ngày lý tưởng <strong>{formatAppointmentDate(data.ideal_date)}</strong>.
-              </p>
-              {data.reason && <p className={styles.apptReason}>{data.reason}</p>}
-              <p className={styles.apptIntro}>
-                Các ngày dưới đây đã cân bằng theo tải phòng khám — bác sĩ chọn và xác nhận:
-              </p>
-              <div className={styles.apptList}>
-                {data.candidates.map((candidate) => {
-                  const full = candidate.label === 'day'
-                  const isSelected = candidate.date === selected
-                  return (
-                    <button
-                      key={candidate.date}
-                      type="button"
-                      disabled={full}
-                      onClick={() => onSelect(candidate.date)}
-                      className={`${styles.apptRow} ${isSelected ? styles.apptRowSelected : ''}`}
-                    >
-                      <span className={styles.apptDay}>
-                        <strong>{candidate.weekday}</strong> {formatAppointmentDate(candidate.date)}
-                        {candidate.recommended && <em className={styles.apptRecommended}>Đề xuất</em>}
-                      </span>
-                      <span className={styles.apptLoad}>
-                        <span className={styles.apptBar}>
-                          <span
-                            className={`${styles.apptBarFill} ${styles[`apptTone_${candidate.label}`]}`}
-                            style={{ width: `${Math.min(100, Math.round((candidate.load / candidate.capacity) * 100))}%` }}
-                          />
-                        </span>
-                        {candidate.load}/{candidate.capacity} · {APPOINTMENT_LOAD_LABELS[candidate.label]}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>
-        <footer className={styles.apptFooter}>
-          {!bookedDate && data && !loading && !error && (
-            <button type="button" className={styles.apptConfirm} disabled={!selected || booking} onClick={onConfirm}>
-              {booking ? <LoaderCircle size={15} className={styles.aiSpinner} /> : <CircleCheck size={15} />}
-              {selected ? `Xác nhận hẹn ngày ${formatAppointmentDate(selected)}` : 'Chọn một ngày hẹn'}
-            </button>
-          )}
-          <span className={styles.aiDisclaimer}>Hệ thống chỉ đề xuất ngày; bác sĩ quyết định và có thể chọn ngày khác.</span>
-        </footer>
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
   const [vitalEdits, setVitalEdits] = useState({
@@ -1036,7 +910,6 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const [counselingText, setCounselingText] = useState(patient.counselingRecord)
   const [counselingLoading, setCounselingLoading] = useState(false)
   const [counselingOpen, setCounselingOpen] = useState(false)
-  const [appointment, setAppointment] = useState<AppointmentState>({ open: false, loading: false, error: '', data: null, selected: '', booking: false, bookedDate: '' })
   const patientIdRef = useRef(patient.medicalId)
   const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
 
@@ -1045,7 +918,6 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
     setCounselingText(patient.counselingRecord)
     setCounselingLoading(false)
     setCounselingOpen(false)
-    setAppointment({ open: false, loading: false, error: '', data: null, selected: '', booking: false, bookedDate: '' })
   }, [patient.medicalId, patient.counselingRecord])
 
   const handleGenerateCounseling = async () => {
@@ -1070,47 +942,6 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
       }
     } finally {
       if (patientIdRef.current === forPatient) setCounselingLoading(false)
-    }
-  }
-
-  const handleOpenAppointment = async () => {
-    const forPatient = patient.medicalId
-    setAppointment({ open: true, loading: true, error: '', data: null, selected: '', booking: false, bookedDate: '' })
-    try {
-      const record = buildCheckerRecord(patient, {
-        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
-        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
-        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
-        counselingRecord: counselingText,
-      })
-      const data = await suggestFollowUp({ record })
-      if (patientIdRef.current !== forPatient) return
-      const recommended = data.candidates.find((candidate) => candidate.recommended)
-      setAppointment((state) => ({ ...state, loading: false, data, selected: recommended?.date ?? '' }))
-    } catch (error) {
-      if (patientIdRef.current !== forPatient) return
-      const message = error instanceof Error ? error.message : 'Lỗi không xác định khi tính lịch tái khám'
-      setAppointment((state) => ({ ...state, loading: false, error: message }))
-    }
-  }
-
-  const handleConfirmAppointment = async () => {
-    if (!appointment.selected) return
-    const forPatient = patient.medicalId
-    setAppointment((state) => ({ ...state, booking: true }))
-    try {
-      const result = await bookFollowUp({
-        medicalId: patient.medicalId,
-        patientName: patient.fullName,
-        date: appointment.selected,
-      })
-      if (patientIdRef.current !== forPatient) return
-      setAppointment((state) => ({ ...state, booking: false, bookedDate: result.appointment.date }))
-      notify(`Đã hẹn tái khám ngày ${formatAppointmentDate(result.appointment.date)}`)
-    } catch (error) {
-      if (patientIdRef.current !== forPatient) return
-      const message = error instanceof Error ? error.message : 'Không đặt được lịch hẹn'
-      setAppointment((state) => ({ ...state, booking: false, error: message }))
     }
   }
 
@@ -1179,7 +1010,6 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
               <div className={styles.noteTools}>
                 <button type="button" onClick={() => notify('Đã tạo mẫu')}><ClipboardPlus size={14} />Tạo mẫu</button>
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
-                <button type="button" onClick={handleOpenAppointment}><CalendarDays size={14} />Hẹn tái khám</button>
               </div>
               <textarea key={`${patient.medicalId}-plan`} ref={planRef} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
             </div>
@@ -1216,15 +1046,6 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 onChange={setCounselingText}
                 onRegenerate={handleGenerateCounseling}
                 onClose={() => setCounselingOpen(false)}
-              />
-            )}
-            {appointment.open && (
-              <AppointmentModal
-                patient={patient}
-                state={appointment}
-                onSelect={(date) => setAppointment((state) => ({ ...state, selected: date }))}
-                onConfirm={handleConfirmAppointment}
-                onClose={() => setAppointment((state) => ({ ...state, open: false }))}
               />
             )}
           </article>
@@ -1718,418 +1539,6 @@ function TechnicalServicesWorkspace() {
     </div>
   )
 }
-type PrescriptionRow = {
-  id: string
-  name: string
-  strength: string
-  unit: string
-  quantity: number
-  instruction: string
-}
-
-const plainUpper = (value: string) =>
-  value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLocaleUpperCase('vi-VN')
-
-function PrescriptionPrintModal({
-  patient,
-  rows,
-  advice,
-  onClose,
-}: {
-  patient: PatientRecord
-  rows: PrescriptionRow[]
-  advice: string
-  onClose: () => void
-}) {
-  const today = new Date()
-  return createPortal(
-    <div className={`${styles.aiModalOverlay} ${styles.counselingOverlay}`} role="dialog" aria-modal="true" aria-label="Đơn thuốc">
-      <div className={`${styles.aiModal} ${styles.counselingModal}`}>
-        <header className={`${styles.aiModalHead} ${styles.screenOnly}`}>
-          <div><Pill size={17} /><h2>Đơn thuốc</h2></div>
-          <div className={styles.counselingActions}>
-            <button type="button" onClick={() => window.print()}><Printer size={14} />In / Xuất PDF</button>
-            <button type="button" className={styles.counselingCloseButton} onClick={onClose} aria-label="Đóng đơn thuốc"><X size={16} /></button>
-          </div>
-        </header>
-        <div className={styles.counselingBody}>
-          <div className={styles.counselingDoc}>
-            <header className={styles.docHead}>
-              <div>
-                <strong>PHÒNG KHÁM THÁP RÙA</strong>
-                <span>{patient.department}</span>
-              </div>
-              <div className={styles.docMotto}>
-                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong>
-                <span>Độc lập - Tự do - Hạnh phúc</span>
-              </div>
-            </header>
-            <h1 className={styles.docTitle}>ĐƠN THUỐC</h1>
-            <div className={styles.docInfo}>
-              <p>Họ và tên bệnh nhân: <strong>{patient.fullName}</strong></p>
-              <p>Năm sinh: {patient.birthYear} ({patient.ageText}) — Giới tính: {patient.gender}</p>
-              <p>Mã bệnh nhân: {patient.medicalId} — Địa chỉ: {patient.address}</p>
-              <p>Chẩn đoán: <strong>{patient.diagnoses.primaryCode}</strong> — {patient.diagnoses.primaryDescription}</p>
-            </div>
-            <table className={styles.rxDocTable}>
-              <thead>
-                <tr><th>STT</th><th>Tên thuốc, hàm lượng</th><th>ĐVT</th><th>SL</th><th>Cách dùng</th></tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={row.id}>
-                    <td>{index + 1}</td>
-                    <td>{row.name}{row.strength ? ` ${row.strength}` : ''}</td>
-                    <td>{row.unit}</td>
-                    <td>{row.quantity}</td>
-                    <td>{row.instruction}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {advice && <p className={styles.rxAdvice}><strong>Lời dặn:</strong> {advice}</p>}
-            <p className={styles.docDate}>
-              Ngày {today.getDate()} tháng {today.getMonth() + 1} năm {today.getFullYear()}
-            </p>
-            <div className={`${styles.docSignatures} ${styles.rxSignature}`}>
-              <div>
-                <strong>BÁC SĨ KÊ ĐƠN</strong>
-                <span>(Ký, ghi rõ họ tên)</span>
-                <em>{patient.doctor}</em>
-              </div>
-            </div>
-            <p className={styles.rxFooterNote}>Khám lại xin mang theo đơn này.</p>
-          </div>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  )
-}
-
-function PrescriptionWorkspace() {
-  const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
-  const patientPanelCollapsed = useClinicalStore((state) => state.patientPanelCollapsed)
-  const selectedMedicalId = useClinicalStore((state) => state.selectedMedicalId)
-  const toastMessage = useClinicalStore((state) => state.toastMessage)
-  const clearToast = useClinicalStore((state) => state.clearToast)
-  const notify = useClinicalStore((state) => state.notify)
-  const patient = mockPatients.find((item) => item.medicalId === selectedMedicalId) ?? mockPatients[0]
-
-  const [rowsByPatient, setRowsByPatient] = useState<Record<string, PrescriptionRow[]>>({})
-  const [adviceByPatient, setAdviceByPatient] = useState<Record<string, string>>({})
-  const [search, setSearch] = useState('')
-  const [printOpen, setPrintOpen] = useState(false)
-
-  const rows = rowsByPatient[patient.medicalId] ?? []
-  const advice = adviceByPatient[patient.medicalId] ?? ''
-  const setRows = (next: PrescriptionRow[]) =>
-    setRowsByPatient((current) => ({ ...current, [patient.medicalId]: next }))
-
-  useEffect(() => {
-    if (!toastMessage) return
-    const timeoutId = window.setTimeout(clearToast, 2200)
-    return () => window.clearTimeout(timeoutId)
-  }, [toastMessage, clearToast])
-
-  useEffect(() => {
-    setSearch('')
-    setPrintOpen(false)
-  }, [patient.medicalId])
-
-  const addMedication = (medication: Medication) => {
-    if (rows.some((row) => row.id === medication.id)) {
-      notify(`${medication.name} đã có trong toa`)
-      return
-    }
-    setRows([
-      ...rows,
-      {
-        id: medication.id,
-        name: medication.name,
-        strength: medication.strength,
-        unit: medication.unit,
-        quantity: medication.defaultQuantity,
-        instruction: medication.instruction,
-      },
-    ])
-    setSearch('')
-    notify(`Đã thêm ${medication.name} vào toa`)
-  }
-
-  const importFromPlan = () => {
-    const plan = plainUpper(patient.treatmentPlan)
-    const found = medications.filter(
-      (medication) =>
-        medication.matchers.some((matcher) => plan.includes(matcher)) &&
-        !rows.some((row) => row.id === medication.id),
-    )
-    if (found.length === 0) {
-      notify('Không tìm thấy thuốc mới trong hướng xử trí')
-      return
-    }
-    setRows([
-      ...rows,
-      ...found.map((medication) => ({
-        id: medication.id,
-        name: medication.name,
-        strength: medication.strength,
-        unit: medication.unit,
-        quantity: medication.defaultQuantity,
-        instruction: medication.instruction,
-      })),
-    ])
-    notify(`Đã thêm ${found.length} thuốc từ hướng xử trí`)
-  }
-
-  const updateRow = (id: string, patch: Partial<PrescriptionRow>) =>
-    setRows(rows.map((row) => (row.id === id ? { ...row, ...patch } : row)))
-
-  const suggestions = search.trim()
-    ? medications.filter((medication) =>
-        plainUpper(`${medication.name} ${medication.strength}`).includes(plainUpper(search.trim())),
-      )
-    : []
-
-  return (
-    <div className={styles.appShell}>
-      <Sidebar />
-      <main className={`${styles.mainShell} ${collapsed ? styles.mainShellCollapsed : ''}`}>
-        <Header />
-        <div className={`${styles.workspace} ${patientPanelCollapsed ? styles.workspacePatientCollapsed : ''} `}>
-          <PatientQueue />
-          <section className={styles.rxPanel}>
-            <header className={styles.rxHeader}>
-              <div>
-                <h2><Pill size={17} /> Toa thuốc</h2>
-                <p>
-                  <strong>{patient.fullName}</strong> · {patient.medicalId} · {patient.ageText} ·{' '}
-                  {patient.diagnoses.primaryCode} — {patient.diagnoses.primaryDescription}
-                </p>
-              </div>
-              <div className={styles.rxActions}>
-                <button type="button" onClick={importFromPlan}><ClipboardPlus size={14} />Lấy từ hướng xử trí</button>
-                <button type="button" disabled={rows.length === 0} onClick={() => setRows([])}><Eraser size={14} />Xóa toa</button>
-                <button type="button" disabled={rows.length === 0} onClick={() => setPrintOpen(true)}><Printer size={14} />In toa</button>
-                <button
-                  type="button"
-                  className={styles.rxSave}
-                  disabled={rows.length === 0}
-                  onClick={() => notify(`Đã lưu toa thuốc (${rows.length} thuốc)`)}
-                >
-                  <Save size={14} />Lưu toa
-                </button>
-              </div>
-            </header>
-
-            <div className={styles.rxSearchWrap}>
-              <Search size={15} />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Tìm thuốc trong danh mục (VD: sắt, canxi, aspirin...)"
-                aria-label="Tìm thuốc"
-              />
-              {suggestions.length > 0 && (
-                <div className={styles.rxSuggest}>
-                  {suggestions.map((medication) => (
-                    <button key={medication.id} type="button" onClick={() => addMedication(medication)}>
-                      <strong>{medication.name} {medication.strength}</strong>
-                      <span>{medication.unit} · {medication.instruction}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {rows.length === 0 ? (
-              <div className={styles.rxEmpty}>
-                <Pill size={22} />
-                <p>Toa thuốc đang trống. Tìm thuốc ở ô trên hoặc bấm "Lấy từ hướng xử trí" để nhặt các thuốc bác sĩ đã ghi trong hồ sơ.</p>
-              </div>
-            ) : (
-              <div className={styles.rxTableWrap}>
-                <table className={styles.rxTable}>
-                  <thead>
-                    <tr><th>STT</th><th>Tên thuốc, hàm lượng</th><th>ĐVT</th><th>Số lượng</th><th>Cách dùng</th><th aria-label="Xóa" /></tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={row.id}>
-                        <td>{index + 1}</td>
-                        <td>{row.name}{row.strength ? ` ${row.strength}` : ''}</td>
-                        <td>{row.unit}</td>
-                        <td>
-                          <input
-                            type="number"
-                            min={1}
-                            max={999}
-                            value={row.quantity}
-                            onChange={(event) => updateRow(row.id, { quantity: Math.max(1, Number(event.target.value) || 1) })}
-                            aria-label={`Số lượng ${row.name}`}
-                          />
-                        </td>
-                        <td>
-                          <input
-                            value={row.instruction}
-                            onChange={(event) => updateRow(row.id, { instruction: event.target.value })}
-                            aria-label={`Cách dùng ${row.name}`}
-                          />
-                        </td>
-                        <td>
-                          <button type="button" onClick={() => setRows(rows.filter((item) => item.id !== row.id))} aria-label={`Xóa ${row.name}`}>
-                            <X size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <label className={styles.rxAdviceField}>
-                  <span>Lời dặn</span>
-                  <input
-                    value={advice}
-                    onChange={(event) =>
-                      setAdviceByPatient((current) => ({ ...current, [patient.medicalId]: event.target.value }))
-                    }
-                    placeholder="VD: Tái khám theo hẹn; khám ngay khi đau bụng, ra huyết, thai máy yếu."
-                  />
-                </label>
-              </div>
-            )}
-          </section>
-        </div>
-      </main>
-      {printOpen && (
-        <PrescriptionPrintModal patient={patient} rows={rows} advice={advice} onClose={() => setPrintOpen(false)} />
-      )}
-      {toastMessage && <div className={styles.toast}><Activity size={16} />{toastMessage}</div>}
-    </div>
-  )
-}
-
-const SCHEDULE_RANGE_OPTIONS = [7, 14, 30] as const
-
-function AppointmentsWorkspace() {
-  const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
-  const toastMessage = useClinicalStore((state) => state.toastMessage)
-  const clearToast = useClinicalStore((state) => state.clearToast)
-  const [rangeDays, setRangeDays] = useState<number>(14)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [schedule, setSchedule] = useState<ScheduleResponse | null>(null)
-
-  const loadSchedule = async (days: number) => {
-    setLoading(true)
-    setError('')
-    try {
-      setSchedule(await fetchAppointmentSchedule(days))
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không tải được lịch hẹn')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    void loadSchedule(rangeDays)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rangeDays])
-
-  useEffect(() => {
-    if (!toastMessage) return
-    const timeoutId = window.setTimeout(clearToast, 2200)
-    return () => window.clearTimeout(timeoutId)
-  }, [toastMessage, clearToast])
-
-  const busiest = schedule?.days.reduce(
-    (max, day) => (day.load > (max?.load ?? 0) ? day : max),
-    null as ScheduleResponse['days'][number] | null,
-  )
-
-  return (
-    <div className={styles.appShell}>
-      <Sidebar />
-      <main className={`${styles.mainShell} ${collapsed ? styles.mainShellCollapsed : ''}`}>
-        <Header />
-        <div className={styles.scheduleWorkspace}>
-          <header className={styles.scheduleHeader}>
-            <div>
-              <h2><CalendarDays size={18} /> Lịch hẹn tái khám</h2>
-              <p>
-                {schedule
-                  ? `${schedule.total} lịch hẹn trong ${rangeDays} ngày tới · sức chứa ${schedule.capacity} lượt/ngày` +
-                    (busiest && busiest.load > 0 ? ` · đông nhất: ${busiest.weekday} ${formatAppointmentDate(busiest.date)} (${busiest.load})` : '')
-                  : 'Đang tải...'}
-              </p>
-            </div>
-            <div className={styles.scheduleControls}>
-              {SCHEDULE_RANGE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={option === rangeDays ? styles.scheduleRangeActive : ''}
-                  onClick={() => setRangeDays(option)}
-                >
-                  {option} ngày
-                </button>
-              ))}
-              <button type="button" onClick={() => void loadSchedule(rangeDays)} aria-label="Tải lại lịch hẹn">
-                <ListRestart size={15} />
-              </button>
-            </div>
-          </header>
-
-          {loading && (
-            <div className={styles.aiLoading}>
-              <LoaderCircle size={22} className={styles.aiSpinner} />
-              <p>Đang tải lịch hẹn...</p>
-            </div>
-          )}
-          {!loading && error && <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>}
-          {!loading && !error && schedule && (
-            <div className={styles.scheduleGrid}>
-              {schedule.days.map((day) => (
-                <section
-                  key={day.date}
-                  className={`${styles.scheduleDay} ${day.is_sunday ? styles.scheduleDayOff : ''} ${day.is_today ? styles.scheduleDayToday : ''}`}
-                >
-                  <header>
-                    <span className={styles.scheduleDayName}>
-                      <strong>{day.weekday}</strong> {formatAppointmentDate(day.date)}
-                      {day.is_today && <em className={styles.scheduleTodayChip}>Hôm nay</em>}
-                    </span>
-                    {!day.is_sunday && (
-                      <span className={`${styles.scheduleLoadChip} ${styles[`apptTone_${day.label}`]}`}>
-                        {day.load}/{day.capacity} · {APPOINTMENT_LOAD_LABELS[day.label]}
-                      </span>
-                    )}
-                  </header>
-                  {day.is_sunday ? (
-                    <p className={styles.scheduleEmpty}>Nghỉ Chủ nhật</p>
-                  ) : day.appointments.length === 0 ? (
-                    <p className={styles.scheduleEmpty}>Chưa có lịch hẹn</p>
-                  ) : (
-                    <ul className={styles.scheduleList}>
-                      {day.appointments.map((item) => (
-                        <li key={item.id}>
-                          <strong>{item.patient_name || 'Bệnh nhân'}</strong>
-                          <span>{item.medical_id}{item.note ? ` · ${item.note}` : ''}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              ))}
-            </div>
-          )}
-        </div>
-      </main>
-      {toastMessage && <div className={styles.toast}><Activity size={16} />{toastMessage}</div>}
-    </div>
-  )
-}
-
 function HisWorkspace() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
   const patientPanelCollapsed = useClinicalStore((state) => state.patientPanelCollapsed)
@@ -2183,8 +1592,6 @@ export default function App() {
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
       <Route path="/dich-vu-ky-thuat" element={<ProtectedRoute><TechnicalServicesWorkspace /></ProtectedRoute>} />
-      <Route path="/lich-hen" element={<ProtectedRoute><AppointmentsWorkspace /></ProtectedRoute>} />
-      <Route path="/toa-thuoc" element={<ProtectedRoute><PrescriptionWorkspace /></ProtectedRoute>} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
