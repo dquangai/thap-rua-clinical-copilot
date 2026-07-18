@@ -403,6 +403,34 @@ def normalize_null_statuses(result: dict[str, Any]) -> list[str]:
     return normalized
 
 
+def apply_deterministic_checks(result: dict[str, Any], record: dict[str, Any], required_ids: list[str]) -> list[str]:
+    """Override objective structured-field checks so repeated runs cannot disagree."""
+    applied: list[str] = []
+    if "R02.4" not in required_ids:
+        return applied
+    vital_signs = record.get("vital_signs", {})
+    height = vital_signs.get("chieu_cao_cm")
+    weight = vital_signs.get("can_nang_kg")
+    bmi = vital_signs.get("bmi")
+    missing = []
+    if not isinstance(height, (int, float)) or height <= 0:
+        missing.append("chiều cao")
+    if not isinstance(weight, (int, float)) or weight <= 0:
+        missing.append("cân nặng")
+    if not isinstance(bmi, (int, float)) or bmi <= 0:
+        missing.append("BMI")
+    if not missing:
+        return applied
+    replacement = {
+        "item_id": "R02.4", "trang_thai": "KHONG_DAT", "bang_chung": "",
+        "ghi_chu": "Thiếu " + ", ".join(missing) + " để đánh giá BMI và theo dõi tăng cân",
+    }
+    rows = result.get("ket_qua_theo_rule", [])
+    result["ket_qua_theo_rule"] = [row for row in rows if row.get("item_id") != "R02.4"] + [replacement]
+    applied.append("R02.4")
+    return applied
+
+
 def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
               log_path: Path, dry_run: bool = False) -> dict[str, Any]:
     run_id = str(uuid.uuid4())
@@ -469,6 +497,7 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
         }
         repaired_ids: list[str] = []
         normalized_ids: list[str] = []
+        deterministic_ids = apply_deterministic_checks(result, safe_record, required_ids)
         try:
             result["criteria_summary"] = validate_and_summarize(result, required_ids)
         except CriteriaValidationError as validation_error:
@@ -501,6 +530,7 @@ def run_check(record: dict[str, Any], rules: dict[str, Any], settings: Settings,
                  "input_tokens": input_tokens, "output_tokens": output_tokens,
                  "total_tokens": input_tokens + output_tokens, "api_calls": len(responses),
                  "repaired_criteria": repaired_ids, "normalized_null_criteria": sorted(set(normalized_ids)),
+                 "deterministic_criteria": deterministic_ids,
                  "compact_normalized_not_applicable_ids": sorted(set(compact_notes["normalized_not_applicable_ids"])),
                  "compact_conflicting_ids": compact_notes["conflicting_ids"],
                  "compact_discarded_unknown_ids": sorted(set(compact_notes["discarded_unknown_ids"])),
