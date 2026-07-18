@@ -58,7 +58,10 @@ def test_ready_returns_503_when_database_is_unavailable(monkeypatch):
     assert response.status_code == 503
 
 
-def test_patient_and_clinical_record_routes_are_public():
+def test_clinical_record_reads_public_and_mutations_require_identity():
+    """Chính sách truy cập hồ sơ: đọc mở cho demo, còn mọi thao tác ghi
+    (POST/PATCH) bắt buộc xác thực để ghi nhận danh tính bác sĩ vào từng
+    phiên bản hồ sơ (xem test_clinical_record_versions)."""
     schema = TestClient(app).get("/openapi.json").json()
     paths = schema["paths"]
     assert "/api/v1/patients/{patient_id}" in paths
@@ -67,5 +70,8 @@ def test_patient_and_clinical_record_routes_are_public():
     record = paths["/api/v1/patients/{patient_id}/clinical-records/{record_id}"]
     assert {"get", "patch"}.issubset(record)
     for operations in (records, record):
-        for operation in operations.values():
-            assert "security" not in operation
+        for method, operation in operations.items():
+            if method == "get":
+                assert "security" not in operation
+            else:
+                assert "security" in operation
