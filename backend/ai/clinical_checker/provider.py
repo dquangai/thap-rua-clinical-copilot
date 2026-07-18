@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import random
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -16,6 +19,35 @@ class LlmResponse:
     input_tokens: int
     output_tokens: int
     request_id: str | None
+
+
+_limiter_lock = threading.Lock()
+_limiter: threading.BoundedSemaphore | None = None
+_limiter_size: int | None = None
+
+
+def _provider_limiter() -> threading.BoundedSemaphore:
+    """Process-wide limiter covering every HTTP call, including parallel rule batches."""
+    global _limiter, _limiter_size
+    size = max(1, int(os.getenv("LLM_MAX_CONCURRENCY", "4")))
+    with _limiter_lock:
+        if _limiter is None or _limiter_size != size:
+            _limiter = threading.BoundedSemaphore(size)
+            _limiter_size = size
+        return _limiter
+
+
+def _retry_delay(exc: urllib.error.HTTPError | None, attempt: int) -> float:
+    """Honor provider guidance, otherwise use capped exponential backoff with full jitter."""
+    if exc is not None:
+        retry_after = exc.headers.get("Retry-After")
+        if retry_after:
+            try:
+                return min(max(float(retry_after), 0.0), 60.0)
+            except ValueError:
+                pass
+    cap = min(1.0 * (2 ** attempt), 30.0)
+    return random.uniform(0.0, cap)
 
 
 def call_llm(settings: Settings, system: str, user: str,
@@ -43,22 +75,24 @@ def call_llm(settings: Settings, system: str, user: str,
     request_data = json.dumps(payload).encode()
     body = None
     request_id = None
-    max_attempts = 3
+    max_attempts = 5
     for attempt in range(max_attempts):
         request = urllib.request.Request(url, data=request_data, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(request, timeout=settings.timeout_seconds) as response:
-                body = json.loads(response.read())
-                request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
+            with _provider_limiter():
+                with urllib.request.urlopen(request, timeout=settings.timeout_seconds) as response:
+                    body = json.loads(response.read())
+                    request_id = response.headers.get("x-request-id") or response.headers.get("request-id")
             break
         except urllib.error.HTTPError as exc:
             # Retry only temporary upstream failures; never echo response bodies because they can contain request data.
             if exc.code not in {408, 429, 500, 502, 503, 504} or attempt == max_attempts - 1:
                 raise RuntimeError(f"LLM API lỗi HTTP {exc.code}") from exc
+            time.sleep(_retry_delay(exc, attempt))
         except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
             if attempt == max_attempts - 1:
-                raise RuntimeError("Kết nối đến LLM provider bị gián đoạn sau 3 lần thử") from exc
-        time.sleep(0.35 * (2 ** attempt))
+                raise RuntimeError(f"Kết nối đến LLM provider bị gián đoạn sau {max_attempts} lần thử") from exc
+            time.sleep(_retry_delay(None, attempt))
     if body is None:
         raise RuntimeError("LLM provider không trả về dữ liệu")
     if settings.provider == "anthropic":
