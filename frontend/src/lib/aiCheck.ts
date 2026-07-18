@@ -1,7 +1,8 @@
 import type { PatientRecord } from '../types/clinical'
 import type { AiCheckResponse } from '../types/aiCheck'
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000'
+// Cùng chuẩn với authApi: VITE_API_BASE_URL đã bao gồm /api/v1; mặc định đi qua Vite proxy.
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
 
 // Mock data dùng 0 cho chỉ số chưa đo; checker cần null để phân biệt thiếu dữ liệu.
 const measured = (value: number | null): number | null => (value ? value : null)
@@ -58,13 +59,13 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
 export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}/api/v1/ai/check-record`, {
+    response = await fetch(`${API_BASE_URL}/ai/check-record`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ record }),
     })
   } catch {
-    throw new Error(`Không kết nối được backend tại ${API_BASE_URL}. Hãy chạy: npm run dev:backend`)
+    throw new Error('Không kết nối được backend. Hãy chạy: npm run dev:backend')
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
