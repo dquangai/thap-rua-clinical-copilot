@@ -5,11 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.ai_jobs import AiJobQueue, queue_settings
 from app.config import get_settings
-<<<<<<< HEAD
 from app.routers import ai, clinical_records, patients
-=======
-from app.routers import admin, ai, auth, encounters, patients
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 
 settings = get_settings()
 
@@ -36,7 +32,6 @@ app.add_middleware(
 app.include_router(patients.router, prefix="/api/v1")
 app.include_router(clinical_records.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")
-app.include_router(admin.router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["system"])

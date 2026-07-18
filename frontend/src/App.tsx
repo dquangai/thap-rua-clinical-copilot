@@ -1,11 +1,6 @@
-<<<<<<< HEAD
-import { useEffect, useRef, useState } from 'react'
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
-=======
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 import {
   Activity,
   Ban,
@@ -50,24 +45,16 @@ import {
   X,
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
-<<<<<<< HEAD
-import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
-=======
 import { buildCheckerRecord, checkClinicalRecord, generateCounseling } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 import { useClinicalStore } from './store/useClinicalStore'
 import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
 
-<<<<<<< HEAD
-
-=======
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 const navigation = [
   { label: 'Tổng quan', icon: House, path: '/tong-quan' },
   { label: 'Hồ sơ bệnh án', icon: FileHeart, path: '/ho-so-benh-an' },
@@ -171,8 +158,6 @@ const remediationFor = (itemId: string) => remediationRegistry[itemId] ?? defaul
 
 function Sidebar() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
-<<<<<<< HEAD
-=======
   const logout = useAuthStore((state) => state.logout)
   const isSubmitting = useAuthStore((state) => state.isSubmitting)
   const authUser = useAuthStore((state) => state.user)
@@ -180,7 +165,6 @@ function Sidebar() {
   const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
   const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
   const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
@@ -207,15 +191,9 @@ function Sidebar() {
         )}
       </nav>
       <div className={styles.sidebarFooter}>
-<<<<<<< HEAD
-        <div className={styles.sidebarDoctor}>
-          <span>HM</span>
-          <div><strong>BS. Lê Thị Mỹ Hạnh</strong><small>Khoa Sản</small></div>
-=======
         <div className={styles.sidebarDoctor} title={authUser?.email ?? undefined}>
           <span>{initials}</span>
           <div><strong>{displayName}</strong><small>{displayUnit}</small></div>
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
         </div>
       </div>
     </aside>
@@ -1095,25 +1073,15 @@ function HisWorkspace() {
 export default function App() {
   return (
     <Routes>
-<<<<<<< HEAD
-      <Route path="/" element={<Navigate to="/ho-so-benh-an" replace />} />
-      <Route path="*" element={<HisWorkspace />} />
-=======
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/dang-nhap" replace />} />
       <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
     </Routes>
   )
 }
 
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-function ProtectedRoute({ children }: { children: ReactNode }) {
-=======
 function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
   const status = useAuthStore((state) => state.status)
   const user = useAuthStore((state) => state.user)
   const location = useLocation()
@@ -1125,16 +1093,3 @@ function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; 
 
   return children
 }
-=======
-
-
-
-
-
-
-
-
-
-
-
->>>>>>> Stashed changes

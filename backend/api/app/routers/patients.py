@@ -19,18 +19,8 @@ def public(document: dict | None) -> dict | None:
 
 
 @router.get("", response_model=list[Patient])
-<<<<<<< HEAD
 def list_patients(query: str | None = Query(default=None, max_length=100), limit: int = Query(default=50, ge=1, le=200), db: Database = Depends(get_database)):
     selector: dict = {}
-=======
-def list_patients(
-    query: str | None = Query(default=None, max_length=100),
-    limit: int = Query(default=50, ge=1, le=200),
-    _: CurrentUser = Depends(get_current_user),
-    db: Client = Depends(get_admin_client),
-):
-    request = db.table("patients").select("*").is_("deleted_at", "null").order("created_at", desc=True).limit(limit)
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
     if query:
         pattern = re.escape(query)
         selector = {"$or": [{"full_name": {"$regex": pattern, "$options": "i"}}, {"medical_record_number": {"$regex": pattern, "$options": "i"}}]}

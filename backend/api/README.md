@@ -17,7 +17,6 @@ Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health
 
 ## API
 
-<<<<<<< HEAD
 - `GET /api/v1/patients`
 - `GET /api/v1/patients/{patient_id}`
 - `POST /api/v1/patients`
@@ -25,16 +24,6 @@ Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health
 - `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}`
 - `POST /api/v1/patients/{patient_id}/clinical-records`
 - `PATCH /api/v1/patients/{patient_id}/clinical-records/{record_id}`
-=======
-- Health: `GET http://localhost:4000/health`
-- OpenAPI: `http://localhost:4000/docs`
-- API: `/api/v1/patients`, `/api/v1/encounters`, `/api/v1/encounters/{id}/workspace`
-- Submit AI job: `POST /api/v1/ai/jobs` (trả `202` và `job_id`)
-- Poll AI job: `GET /api/v1/ai/jobs/{job_id}`
-- Auth API: xem [`docs/auth-api.md`](../../docs/auth-api.md)
-
-Các endpoint nghiệp vụ yêu cầu `Authorization: Bearer <supabase-access-token>`. Frontend đăng nhập bằng Supabase Auth với publishable key, rồi gửi access token cho API. Secret key chỉ được dùng trong backend và có thể vượt qua RLS.
->>>>>>> db90767f961a5f7159500429b95e69d6ca7049f6
 
 ## Kiểm thử
 
