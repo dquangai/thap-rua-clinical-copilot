@@ -28,12 +28,6 @@ services:
         value: https://thap-rua-clinical-copilot-1.onrender.com
       - key: MONGODB_URI
         sync: false
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_PUBLISHABLE_KEY
-        sync: false
-      - key: SUPABASE_SECRET_KEY
-        sync: false
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_MODEL

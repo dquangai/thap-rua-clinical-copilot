@@ -1,6 +1,6 @@
 # Clinical API (Python + MongoDB Atlas)
 
-FastAPI service dùng MongoDB Atlas để lưu dữ liệu lâm sàng. Các API collection tổng quát yêu cầu Supabase Bearer token; API bệnh nhân và bệnh án hiện vẫn public.
+FastAPI service dùng MongoDB Atlas để lưu dữ liệu lâm sàng. Toàn bộ API được truy cập trực tiếp, không có lớp đăng nhập.
 
 ## Setup
 
@@ -27,7 +27,7 @@ Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health
 
 ## API đọc MongoDB collections
 
-Các endpoint này yêu cầu `Authorization: Bearer <supabase-access-token>` và chỉ cho phép đọc các collection đã khai báo trong backend.
+Các endpoint này chỉ cho phép đọc các collection đã khai báo trong backend.
 
 ```text
 GET /api/v1/collections
@@ -40,11 +40,9 @@ Danh sách document hỗ trợ `limit`, `offset`, `sort_by`, `sort_order=asc|des
 Ví dụ:
 
 ```bash
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:4000/api/v1/collections/encounters?limit=20&sort_by=created_at&sort_order=desc"
+curl "http://localhost:4000/api/v1/collections/encounters?limit=20&sort_by=created_at&sort_order=desc"
 
-curl -H "Authorization: Bearer $TOKEN" \
-  "http://localhost:4000/api/v1/collections/lab_results?filter_field=encounter_id&filter_value=ENC-001"
+curl "http://localhost:4000/api/v1/collections/lab_results?filter_field=encounter_id&filter_value=ENC-001"
 ```
 
 API không nhận MongoDB operator hoặc tên collection tùy ý từ client.

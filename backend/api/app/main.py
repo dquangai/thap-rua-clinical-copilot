@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.ai_jobs import AiJobQueue, queue_settings
 from app.config import get_settings
 from app.database import get_database
-from app.routers import ai, appointments, clinical_records, collections, lab_analysis, lab_reports, patients
+from app.routers import ai, appointments, clinical_records, collections, lab_analysis, lab_reports, patients, rules
 
 settings = get_settings()
 
@@ -27,11 +27,12 @@ app.add_middleware(
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+" if settings.app_env == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "If-Match-Version", "X-Demo-Mode"],
+    allow_headers=["Content-Type", "Idempotency-Key", "If-Match-Version"],
 )
 app.include_router(patients.router, prefix="/api/v1")
 app.include_router(clinical_records.router, prefix="/api/v1")
 app.include_router(collections.router, prefix="/api/v1")
+app.include_router(rules.router, prefix="/api/v1")
 app.include_router(lab_analysis.router, prefix="/api/v1")
 app.include_router(lab_reports.router, prefix="/api/v1")
 app.include_router(ai.router, prefix="/api/v1")

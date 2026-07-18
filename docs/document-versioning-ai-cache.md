@@ -214,8 +214,8 @@ sequenceDiagram
     participant C as clinical_records
     participant V as clinical_record_versions
 
-    D->>API: POST clinical record + Bearer token
-    API->>API: Tạo actor snapshot
+    D->>API: POST clinical record
+    API->>API: Tạo system actor snapshot
     API->>API: Tính snapshot và content_hash
     API->>C: Insert current_version = 1
     API->>V: Insert immutable version 1
@@ -230,7 +230,6 @@ Client phải gửi version mà bác sĩ đang sửa:
 
 ```http
 PATCH /api/v1/patients/{patient_id}/clinical-records/{record_id}
-Authorization: Bearer <access-token>
 If-Match-Version: 3
 Content-Type: application/json
 
@@ -358,7 +357,6 @@ Response:
 
 ```http
 POST /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/2/restore
-Authorization: Bearer <access-token>
 Content-Type: application/json
 
 {
@@ -368,20 +366,16 @@ Content-Type: application/json
 
 Restore không xóa version 3–5 và không đưa con trỏ lùi về version 2. Backend tạo version 6 có snapshot giống version 2 và ghi `restored_from_version = 2`.
 
-## 11. Danh tính người sửa
+## 11. Nguồn cập nhật
 
-Các thao tác tạo, cập nhật và restore yêu cầu Bearer token qua dependency `get_current_user`.
-
-Actor snapshot gồm:
+Ứng dụng không dùng danh tính đăng nhập. Các thao tác tạo, cập nhật và restore ghi actor hệ thống cố định:
 
 ```json
 {
-  "user_id": "Supabase user ID",
-  "display_name": "full_name, name, email hoặc user ID"
+  "user_id": "system",
+  "display_name": "Clinical Copilot"
 }
 ```
-
-`user_id` là định danh audit chính. `display_name` là snapshot để lịch sử vẫn hiển thị được tên tại thời điểm chỉnh sửa.
 
 Trạng thái hiện tại:
 
@@ -770,10 +764,6 @@ Artifact hiện không có TTL. Cần định nghĩa retention theo yêu cầu v
 - Artifact có thể tái tạo có thể hết hạn.
 - Không xóa artifact đang được tham chiếu bởi hồ sơ đã ký nếu chính sách yêu cầu lưu bằng chứng.
 
-### 22.6. Phân quyền đọc
-
-Các API đọc hồ sơ hiện chưa áp dụng authorization đầy đủ. Production cần RBAC/ABAC theo cơ sở, khoa, vai trò và quan hệ chăm sóc bệnh nhân.
-
 ## 23. Checklist triển khai production
 
 - [ ] `MONGODB_URI` lấy từ secret manager, không từ source control.
@@ -782,7 +772,6 @@ Các API đọc hồ sơ hiện chưa áp dụng authorization đầy đủ. Pro
 - [ ] Đã chạy `scripts.setup_mongodb`.
 - [ ] Unique indexes tồn tại.
 - [ ] Backup và restore drill đã được kiểm thử.
-- [ ] API đọc và ghi đều có authorization phù hợp.
 - [ ] MongoDB transactions được bật cho audit-grade write.
 - [ ] Cache stampede control được triển khai nếu tải cao.
 - [ ] Có dashboard cache hit rate, saved tokens và provider cost.
@@ -800,7 +789,6 @@ Các API đọc hồ sơ hiện chưa áp dụng authorization đầy đủ. Pro
 | `backend/api/app/ai_cache.py` | Tạo cache key, đọc và ghi AI artifact. |
 | `backend/api/app/routers/ai.py` | Tích hợp cache vào AI endpoints và worker. |
 | `backend/api/app/database.py` | MongoDB indexes. |
-| `backend/api/app/auth.py` | Danh tính actor dùng cho audit. |
 | `backend/api/app/telemetry.py` | Cache/token/API usage telemetry. |
 | `backend/api/tests/test_clinical_record_versions.py` | Test versioning API. |
 | `backend/api/tests/test_ai_cache.py` | Test cache key và cache hit. |

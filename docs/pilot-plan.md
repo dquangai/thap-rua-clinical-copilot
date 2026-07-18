@@ -26,7 +26,7 @@ KPI phụ: tỷ lệ bác sĩ bấm "Approve" gợi ý AI (chấp nhận ≥ 50%
 
 | Tuần | Việc chính | Đầu ra |
 |---|---|---|
-| 0 (chuẩn bị) | Ký thỏa thuận pilot + cam kết bảo mật dữ liệu; tạo môi trường riêng (Render + MongoDB Atlas); tạo tài khoản bác sĩ; đào tạo 60 phút | Môi trường chạy, bác sĩ đăng nhập được |
+| 0 (chuẩn bị) | Ký thỏa thuận pilot + cam kết bảo mật dữ liệu; tạo môi trường riêng (Render + MongoDB Atlas); đào tạo 60 phút | Môi trường chạy và truy cập được |
 | 1 | Dùng song song với quy trình giấy hiện tại, chỉ luồng rà soát hồ sơ | Baseline % tiêu chí đạt; phản hồi UX đầu tiên |
 | 2 | Bật biên bản tư vấn AI + in A4 cho ca có bệnh lý | Đo thời gian soạn biên bản trước/sau |
 | 3 | Bật gợi ý lịch tái khám + trang Lịch hẹn; chỉnh bộ tiêu chí theo góp ý bác sĩ (chỉ sửa JSON, không sửa code) | Bộ tiêu chí bản địa hoá cho phòng khám |

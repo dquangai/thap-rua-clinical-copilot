@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.auth import CurrentUser, get_current_user
 from app.database import get_database
 from app.main import app
 from tests.fake_mongo import FakeDatabase
@@ -9,11 +8,6 @@ from tests.fake_mongo import FakeDatabase
 def test_create_update_noop_conflict_diff_and_restore_versions():
     db = FakeDatabase(patients=[{"id": "patient-1"}])
     app.dependency_overrides[get_database] = lambda: db
-    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
-        id="doctor-1",
-        email="doctor@example.test",
-        display_name="BS. Nguyễn Văn A",
-    )
     try:
         client = TestClient(app)
         created_response = client.post(
@@ -24,7 +18,7 @@ def test_create_update_noop_conflict_diff_and_restore_versions():
         created = created_response.json()
         record_id = created["id"]
         assert created["current_version"] == 1
-        assert created["updated_by"]["display_name"] == "BS. Nguyễn Văn A"
+        assert created["updated_by"] == {"user_id": "system", "display_name": "Clinical Copilot"}
 
         updated_response = client.patch(
             f"/api/v1/patients/patient-1/clinical-records/{record_id}",
@@ -76,7 +70,7 @@ def test_create_update_noop_conflict_diff_and_restore_versions():
         app.dependency_overrides.clear()
 
 
-def test_clinical_record_mutation_requires_doctor_identity():
+def test_clinical_record_mutation_does_not_require_identity():
     db = FakeDatabase(patients=[{"id": "patient-1"}])
     app.dependency_overrides[get_database] = lambda: db
     try:
@@ -84,6 +78,6 @@ def test_clinical_record_mutation_requires_doctor_identity():
             "/api/v1/patients/patient-1/clinical-records",
             json={"diagnosis": {}},
         )
-        assert response.status_code == 401
+        assert response.status_code == 201
     finally:
         app.dependency_overrides.clear()
