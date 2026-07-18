@@ -8,6 +8,7 @@ from pymongo import ReturnDocument
 from pymongo.database import Database
 from pymongo.errors import DuplicateKeyError
 
+from app.auth import CurrentUser, get_current_user
 from app.database import get_database
 from app.schemas import (
     ClinicalRecord,
@@ -19,11 +20,11 @@ from app.schemas import (
 )
 from app.versioning import (
     RECORD_CONTENT_FIELDS,
+    actor_snapshot,
     changed_fields,
     content_hash,
     ensure_versioned_record,
     record_snapshot,
-    system_actor_snapshot,
 )
 
 router = APIRouter(prefix="/patients/{patient_id}/clinical-records", tags=["clinical-records"])
@@ -105,10 +106,11 @@ def create_record(
     patient_id: str,
     payload: ClinicalRecordCreate,
     db: Database = Depends(get_database),
+    actor: CurrentUser = Depends(get_current_user),
 ):
     require_patient(patient_id, db)
     now = datetime.now(timezone.utc)
-    actor_data = system_actor_snapshot()
+    actor_data = actor_snapshot(actor)
     record = {
         **payload.model_dump(mode="json", exclude_none=True),
         "id": str(uuid4()),
@@ -146,6 +148,7 @@ def update_record(
     payload: ClinicalRecordUpdate,
     expected_version: int = Header(alias="If-Match-Version", ge=1),
     db: Database = Depends(get_database),
+    actor: CurrentUser = Depends(get_current_user),
 ):
     changes = payload.model_dump(mode="json", exclude_unset=True)
     if not changes:
@@ -162,7 +165,7 @@ def update_record(
     if digest == current["content_hash"]:
         return public(current)
 
-    actor_data = system_actor_snapshot()
+    actor_data = actor_snapshot(actor)
     next_version = actual_version + 1
     history = version_document(
         current,
@@ -273,6 +276,7 @@ def restore_version(
     version: int,
     payload: ClinicalRecordRestore,
     db: Database = Depends(get_database),
+    actor: CurrentUser = Depends(get_current_user),
 ):
     current = require_record(patient_id, record_id, db)
     actual_version = int(current["current_version"])
@@ -287,7 +291,7 @@ def restore_version(
 
     before = record_snapshot(current)
     restored = deepcopy(target["snapshot"])
-    actor_data = system_actor_snapshot()
+    actor_data = actor_snapshot(actor)
     next_version = actual_version + 1
     history = version_document(
         current,

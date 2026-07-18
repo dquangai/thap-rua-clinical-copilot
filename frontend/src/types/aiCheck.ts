@@ -26,5 +26,6 @@ export interface AiCheckResponse {
     excluded_by_request_count?: number
     cache_status?: 'hit' | 'miss' | 'bypass'
     saved_tokens?: number
+    estimated_cost_usd?: number
   }
 }

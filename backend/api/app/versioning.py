@@ -37,10 +37,10 @@ def changed_fields(before: dict[str, Any], after: dict[str, Any]) -> list[str]:
     return sorted(field for field in RECORD_CONTENT_FIELDS if before.get(field) != after.get(field))
 
 
-def system_actor_snapshot() -> dict[str, str]:
+def actor_snapshot(actor: Any) -> dict[str, str | None]:
     return {
-        "user_id": "system",
-        "display_name": "Clinical Copilot",
+        "user_id": actor.id,
+        "display_name": actor.display_name or actor.email or actor.id,
     }
 
 

@@ -1,0 +1,327 @@
+.loginPage {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(520px, 43%) 1fr;
+  color: var(--ink);
+  background: #f7f8fa;
+}
+
+.introPanel {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 42px 56px;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(circle at 12% 88%, rgba(199, 33, 39, .82) 0 3%, transparent 3.2%),
+    radial-gradient(circle at 84% 17%, rgba(255, 255, 255, .08) 0 18%, transparent 18.2%),
+    linear-gradient(145deg, #0e3867 0%, var(--brand-navy) 58%, #0b315c 100%);
+}
+
+.introPanel::before,
+.introPanel::after {
+  content: '';
+  position: absolute;
+  width: 360px;
+  height: 360px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 50%;
+}
+
+.introPanel::before { right: -180px; bottom: 14%; }
+.introPanel::after { right: -110px; bottom: 7%; width: 240px; height: 240px; }
+
+.introBrand {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  font-size: 21px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+}
+
+.introBrand img {
+  width: 42px;
+  height: 42px;
+  padding: 7px;
+  border-radius: 11px;
+  background: #fff;
+  object-fit: contain;
+}
+
+.introContent {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  margin: auto 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 999px;
+  color: rgba(255, 255, 255, .88);
+  background: rgba(255, 255, 255, .08);
+  font-size: 12px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.introContent h1 {
+  margin: 25px 0 18px;
+  font-size: clamp(42px, 4vw, 62px);
+  line-height: 1.12;
+  letter-spacing: -.045em;
+}
+
+.introContent > p {
+  max-width: 520px;
+  margin: 0;
+  color: rgba(255, 255, 255, .76);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.trustItems {
+  display: grid;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.trustItems span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, .9);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.trustItems svg { color: #fff; }
+
+.introPanel > small {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 255, 255, .58);
+  font-size: 11px;
+  letter-spacing: .04em;
+}
+
+.formPanel {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 56px;
+  background:
+    linear-gradient(rgba(19, 77, 139, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(19, 77, 139, .025) 1px, transparent 1px),
+    #f7f8fa;
+  background-size: 32px 32px;
+}
+
+.loginCard {
+  width: min(440px, 100%);
+  padding: 40px;
+  border: 1px solid #e1e5ea;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 24px 55px rgba(16, 42, 73, .1);
+}
+
+.loginCard header { margin-bottom: 31px; }
+
+.welcomeLabel {
+  display: block;
+  margin-bottom: 9px;
+  color: var(--brand-red);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.loginCard h2 {
+  margin: 0 0 10px;
+  color: #17324f;
+  font-size: 29px;
+  line-height: 1.2;
+  letter-spacing: -.03em;
+}
+
+.loginCard header p {
+  margin: 0;
+  color: #6d7885;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.loginCard form { display: grid; gap: 20px; }
+
+.formField {
+  display: grid;
+  gap: 8px;
+}
+
+.formField > span {
+  color: #33465a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.inputControl {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 13px;
+  border: 1px solid #d6dde5;
+  border-radius: 9px;
+  color: #718093;
+  background: #fff;
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+
+.inputControl:focus-within {
+  border-color: var(--brand-navy);
+  box-shadow: 0 0 0 3px rgba(19, 77, 139, .1);
+}
+
+.inputControl input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.inputControl input::placeholder { color: #a2acb7; font-weight: 450; }
+
+.inputControl button {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #6c7987;
+  background: transparent;
+}
+
+.errorMessage {
+  padding: 11px 13px;
+  border: 1px solid #f0c4c6;
+  border-radius: 8px;
+  color: #a7191e;
+  background: #fff4f4;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.loginActions {
+  display: grid;
+  gap: 10px;
+}
+
+.submitButton {
+  height: 47px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 2px;
+  border: 0;
+  border-radius: 9px;
+  color: #fff;
+  background: var(--brand-navy);
+  box-shadow: 0 9px 20px rgba(19, 77, 139, .18);
+  font-size: 13px;
+  font-weight: 750;
+  transition: background .16s ease, transform .16s ease;
+}
+
+.submitButton:hover:not(:disabled) { background: #0e3d71; transform: translateY(-1px); }
+
+.submitButton:disabled { cursor: not-allowed; opacity: .58; box-shadow: none; }
+
+.demoButton {
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid #b9c9d9;
+  border-radius: 9px;
+  color: var(--brand-navy);
+  background: #f5f8fb;
+  font-size: 13px;
+  font-weight: 750;
+  transition: border-color .16s ease, background .16s ease, transform .16s ease;
+}
+
+.demoButton:hover:not(:disabled) {
+  border-color: var(--brand-navy);
+  background: #edf4fa;
+  transform: translateY(-1px);
+}
+
+.demoButton:disabled { cursor: not-allowed; opacity: .58; }
+
+.buttonSpinner,
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, .4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .75s linear infinite;
+}
+
+.loginCard footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 26px;
+  color: #7c8792;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.loginCard footer svg { color: var(--brand-navy); }
+
+.loadingScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  color: #687585;
+  background: #f7f8fa;
+}
+
+.loadingScreen img { width: 124px; height: auto; }
+.loadingScreen .spinner { border-color: #d3dbe4; border-top-color: var(--brand-navy); }
+.loadingScreen p { margin: 0; font-size: 12px; font-weight: 600; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 1380px) {
+  .loginPage { grid-template-columns: 500px 1fr; }
+  .introPanel { padding: 36px 44px; }
+  .introContent h1 { font-size: 46px; }
+  .formPanel { padding: 40px; }
+}

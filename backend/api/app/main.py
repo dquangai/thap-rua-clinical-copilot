@@ -27,7 +27,7 @@ app.add_middleware(
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+" if settings.app_env == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["Content-Type", "Idempotency-Key", "If-Match-Version"],
+    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "If-Match-Version"],
 )
 app.include_router(patients.router, prefix="/api/v1")
 app.include_router(clinical_records.router, prefix="/api/v1")

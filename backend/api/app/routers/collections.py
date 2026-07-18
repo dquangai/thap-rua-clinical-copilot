@@ -9,6 +9,7 @@ from bson import Binary, Decimal128, ObjectId
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo.database import Database
 
+from app.auth import CurrentUser, get_current_user
 from app.database import get_database
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -71,6 +72,7 @@ def json_value(value: Any) -> Any:
 
 @router.get("")
 def list_available_collections(
+    _: CurrentUser = Depends(get_current_user),
     db: Database = Depends(get_database),
 ) -> dict[str, list[dict[str, Any]]]:
     existing = set(db.list_collection_names())
@@ -91,6 +93,7 @@ def list_collection_documents(
     sort_order: Literal["asc", "desc"] = "desc",
     filter_field: str | None = Query(default=None, min_length=1, max_length=100),
     filter_value: str | None = Query(default=None, max_length=500),
+    _: CurrentUser = Depends(get_current_user),
     db: Database = Depends(get_database),
 ) -> dict[str, Any]:
     collection_name = require_collection(collection_name)
@@ -122,6 +125,7 @@ def list_collection_documents(
 def get_collection_document(
     collection_name: str,
     document_id: str,
+    _: CurrentUser = Depends(get_current_user),
     db: Database = Depends(get_database),
 ) -> dict[str, Any]:
     collection_name = require_collection(collection_name)

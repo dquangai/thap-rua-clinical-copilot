@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import {
   Activity,
   Ban,
@@ -28,6 +28,7 @@ import {
   Info,
   ListRestart,
   LoaderCircle,
+  LogOut,
   Megaphone,
   Menu,
   Minimize2,
@@ -53,6 +54,9 @@ import {
 import { mockPatients, statusSummary } from './data/mockPatients'
 import { medications, type Medication } from './data/medications'
 import { buildCheckerRecord, checkClinicalRecord, generateCounseling } from './lib/aiCheck'
+import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
+import AdminDashboard from './pages/AdminDashboard'
+import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import { fetchLabSummaryPdf, requestLabNarrative } from './api/labAnalysisApi'
 import { bookFollowUp, fetchAppointmentSchedule, suggestFollowUp, type ScheduleResponse, type SuggestFollowUpResponse } from './api/appointmentsApi'
@@ -296,9 +300,13 @@ const remediationFor = (itemId: string) => remediationRegistry[itemId] ?? defaul
 
 function Sidebar() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
-  const displayName = 'Bác sĩ'
-  const displayUnit = 'Khoa lâm sàng'
-  const initials = 'BS'
+  const logout = useAuthStore((state) => state.logout)
+  const isSubmitting = useAuthStore((state) => state.isSubmitting)
+  const authUser = useAuthStore((state) => state.user)
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '')
+  const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
+  const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
+  const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
@@ -318,12 +326,20 @@ function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        {['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '') && (
+          <NavLink to="/admin" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+            <ShieldCheck size={18} /><span>Quản trị hệ thống</span>
+          </NavLink>
+        )}
       </nav>
       <div className={styles.sidebarFooter}>
-        <div className={styles.sidebarDoctor}>
+        <div className={styles.sidebarDoctor} title={authUser?.email ?? undefined}>
           <span>{initials}</span>
           <div><strong>{displayName}</strong><small>{displayUnit}</small></div>
         </div>
+        <button type="button" className={styles.logoutButton} onClick={() => void logout()} disabled={isSubmitting}>
+          <LogOut size={18} /><span>{isSubmitting ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
+        </button>
       </div>
     </aside>
   )
@@ -331,9 +347,11 @@ function Sidebar() {
 
 function Header() {
   const toggleSidebar = useClinicalStore((state) => state.toggleSidebar)
-  const displayName = 'Bác sĩ'
-  const displayUnit = 'Khoa lâm sàng'
-  const initials = 'BS'
+  const authUser = useAuthStore((state) => state.user)
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '')
+  const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
+  const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
+  const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
   return (
     <header className={styles.header}>
       <button type="button" className={styles.iconButton} onClick={toggleSidebar} aria-label="Thu gọn sidebar">
@@ -2323,13 +2341,46 @@ function HisWorkspace() {
 }
 
 export default function App() {
+  const status = useAuthStore((state) => state.status)
+  const expiresAt = useAuthStore((state) => state.expiresAt)
+  const initialize = useAuthStore((state) => state.initialize)
+  const refreshSession = useAuthStore((state) => state.refreshSession)
+
+  useEffect(() => {
+    void initialize()
+  }, [initialize])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !expiresAt) return
+    const refreshAt = expiresAt * 1000 - 60_000
+    const timeoutId = window.setTimeout(() => void refreshSession(), Math.max(1_000, refreshAt - Date.now()))
+    return () => window.clearTimeout(timeoutId)
+  }, [expiresAt, refreshSession, status])
+
+  if (status === 'checking') return <AuthLoadingScreen />
+
   return (
     <Routes>
+      <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to="/ho-so-benh-an" replace />} />
-      <Route path="/dich-vu-ky-thuat" element={<TechnicalServicesWorkspace />} />
-      <Route path="/lich-hen" element={<AppointmentsWorkspace />} />
-      <Route path="/toa-thuoc" element={<PrescriptionWorkspace />} />
-      <Route path="*" element={<HisWorkspace />} />
+      <Route path="/dich-vu-ky-thuat" element={<ProtectedRoute><TechnicalServicesWorkspace /></ProtectedRoute>} />
+      <Route path="/lich-hen" element={<ProtectedRoute><AppointmentsWorkspace /></ProtectedRoute>} />
+      <Route path="/toa-thuoc" element={<ProtectedRoute><PrescriptionWorkspace /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
+      <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )
+}
+
+function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
+  const status = useAuthStore((state) => state.status)
+  const user = useAuthStore((state) => state.user)
+  const location = useLocation()
+
+  if (status !== 'authenticated') {
+    return <Navigate to="/dang-nhap" replace state={{ from: location }} />
+  }
+  if (adminOnly && !['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) return <Navigate to="/ho-so-benh-an" replace />
+
+  return children
 }
