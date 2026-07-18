@@ -76,13 +76,13 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
   }
 }
 
-async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>): Promise<T> {
+async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>, options: Record<string, unknown> = {}): Promise<T> {
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ record }),
+      body: JSON.stringify({ record, ...options }),
     })
   } catch {
     throw new Error('Không kết nối được backend. Hãy chạy: npm run dev:backend')
@@ -95,8 +95,16 @@ async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRec
   return response.json()
 }
 
-export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
-  return postAi<AiCheckResponse>('/ai/check-record', record)
+export interface CheckClinicalRecordOptions {
+  includeCriteria?: string[]
+  excludeCriteria?: string[]
+}
+
+export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>, options: CheckClinicalRecordOptions = {}): Promise<AiCheckResponse> {
+  return postAi<AiCheckResponse>('/ai/check-record', record, {
+    include_criteria: options.includeCriteria,
+    exclude_criteria: options.excludeCriteria ?? [],
+  })
 }
 
 export async function generateCounseling(record: ReturnType<typeof buildCheckerRecord>): Promise<string> {

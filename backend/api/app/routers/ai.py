@@ -56,6 +56,8 @@ COUNSELING_SYSTEM_PROMPT = (
 class CheckRecordRequest(BaseModel):
     record: dict[str, Any]
     dry_run: bool = Field(default=False, description="Chỉ redact + quét PII, không gọi LLM")
+    include_criteria: list[str] | None = Field(default=None, description="Chỉ kiểm tra các tiêu chí này")
+    exclude_criteria: list[str] = Field(default_factory=list, description="Bỏ qua các tiêu chí đã được duyệt")
 
 
 class GenerateCounselingRequest(BaseModel):
@@ -177,8 +179,19 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         criterion["item_id"]: criterion["criterion"]
         for criterion in extract_required_criteria(rules)
     }
+    known_ids = set(criteria_catalog)
+    included = set(payload.include_criteria) if payload.include_criteria is not None else None
+    excluded = set(payload.exclude_criteria)
+    requested_ids = (included or set()) | excluded
+    unknown_ids = sorted(requested_ids - known_ids)
+    if unknown_ids:
+        raise HTTPException(status_code=422, detail=f"Tiêu chí không tồn tại: {', '.join(unknown_ids)}")
+    if included is not None and included & excluded:
+        overlap = ", ".join(sorted(included & excluded))
+        raise HTTPException(status_code=422, detail=f"Tiêu chí vừa được chọn vừa bị loại trừ: {overlap}")
     try:
-        output = run_check(payload.record, rules, settings, LOG_PATH, dry_run=payload.dry_run)
+        output = run_check(payload.record, rules, settings, LOG_PATH, dry_run=payload.dry_run,
+                           include_criteria=included, exclude_criteria=excluded)
     except CriteriaValidationError as exc:
         raise HTTPException(status_code=502, detail=f"Kết quả AI không hợp lệ: {exc}") from exc
     except RuntimeError as exc:
@@ -197,6 +210,9 @@ def check_record(payload: CheckRecordRequest) -> dict[str, Any]:
         "input_tokens": telemetry.get("input_tokens"),
         "output_tokens": telemetry.get("output_tokens"),
         "estimated_cost_usd": telemetry.get("estimated_cost_usd") or telemetry.get("cost_usd"),
+        "criteria_count": telemetry.get("criteria_count"),
+        "included_by_request_count": telemetry.get("included_by_request_count"),
+        "excluded_by_request_count": telemetry.get("excluded_by_request_count"),
     }
     if payload.dry_run:
         return {"run_id": output["run_id"], "safe_record": output["safe_record"], "meta": meta}
