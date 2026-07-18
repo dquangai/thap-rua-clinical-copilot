@@ -646,16 +646,35 @@
 
 .bloodPressureShell {
   input {
-    padding-inline: 4px;
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-inline: 5px;
     text-align: center;
+    appearance: textfield;
+
+    &::-webkit-inner-spin-button,
+    &::-webkit-outer-spin-button {
+      margin: 0;
+      appearance: none;
+    }
   }
 
   i {
+    flex: 0 0 12px;
     display: grid;
     place-items: center;
     color: #71848a;
     font-size: 11px;
     font-style: normal;
+  }
+
+  em {
+    flex: 0 0 48px;
+    min-width: 48px;
+    box-sizing: border-box;
+    padding-inline: 4px;
   }
 }
 
@@ -1413,7 +1432,7 @@
 
 /* Card placement aligned with the latest clinical-section reference. */
 .examCardsGrid {
-  grid-template-columns: minmax(350px, .68fr) minmax(520px, 1.32fr);
+  grid-template-columns: minmax(560px, 1.12fr) minmax(500px, .88fr);
   gap: 16px;
   align-items: start;
 }
@@ -1563,7 +1582,7 @@
 
 @media (max-width: 1500px) {
   .examCardsGrid {
-    grid-template-columns: minmax(340px, .72fr) minmax(500px, 1.28fr);
+    grid-template-columns: minmax(500px, 1.04fr) minmax(480px, .96fr);
   }
 
   .clinicalDetailsBody {
