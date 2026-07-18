@@ -1,8 +1,7 @@
 import type { PatientRecord } from '../types/clinical'
 import type { AiCheckResponse } from '../types/aiCheck'
-
-// VITE_API_BASE_URL đã bao gồm /api/v1; mặc định đi qua Vite proxy.
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
+import { API_BASE_URL } from '../api/config'
+import { recordDemoAudit, recordDemoUsage } from './demoAdminActivity'
 
 // Mock data dùng 0 cho chỉ số chưa đo; checker cần null để phân biệt thiếu dữ liệu.
 const measured = (value: number | null): number | null => (value ? value : null)
@@ -76,27 +75,48 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
   }
 }
 
-async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>): Promise<T> {
+async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>, options: Record<string, unknown> = {}): Promise<T> {
+  const started = performance.now()
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ record }),
+      body: JSON.stringify({ record, ...options }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy chạy: npm run dev:backend')
+    recordDemoUsage({ endpoint: `/api/v1${path}`, status: 'network_error', status_code: 0, model: null, latency_ms: 0, total_tokens: 0, cost_usd: 0, api_calls: 0, cache_status: 'bypass' })
+    throw new Error('Không kết nối được API backend. Kiểm tra kết nối mạng hoặc cấu hình CORS.')
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
     const detail = body && typeof body.detail === 'string' ? body.detail : `Lỗi ${response.status}`
+    recordDemoUsage({ endpoint: `/api/v1${path}`, status: 'error', status_code: response.status, model: null, latency_ms: 0, total_tokens: 0, cost_usd: 0, api_calls: 0, cache_status: 'bypass' })
     throw new Error(detail)
   }
-  return response.json()
+  const body = await response.json() as T & { meta?: { status?: string; model?: string; latency_ms?: number; total_tokens?: number; estimated_cost_usd?: number; api_calls?: number; cache_status?: 'hit' | 'miss' | 'bypass' } }
+  const apiCalls = body.meta?.api_calls ?? 0
+  const cacheStatus = body.meta?.cache_status ?? 'bypass'
+  recordDemoUsage({ endpoint: `/api/v1${path}`, status: body.meta?.status ?? 'success', status_code: response.status, model: body.meta?.model ?? null, latency_ms: apiCalls > 0 && cacheStatus !== 'hit' ? body.meta?.latency_ms ?? Math.round(performance.now() - started) : 0, total_tokens: apiCalls > 0 ? body.meta?.total_tokens ?? 0 : 0, cost_usd: apiCalls > 0 ? body.meta?.estimated_cost_usd ?? 0 : 0, api_calls: apiCalls, cache_status: cacheStatus })
+  return body
 }
 
-export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
-  return postAi<AiCheckResponse>('/ai/check-record', record)
+export interface CheckClinicalRecordOptions {
+  includeCriteria?: string[]
+  excludeCriteria?: string[]
+  recordId?: string
+  recordVersion?: number
+}
+
+export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>, options: CheckClinicalRecordOptions = {}): Promise<AiCheckResponse> {
+  const response = await postAi<AiCheckResponse>('/ai/check-record', record, {
+    include_criteria: options.includeCriteria,
+    exclude_criteria: options.excludeCriteria ?? [],
+    record_id: options.recordId,
+    record_version: options.recordVersion,
+  })
+  recordDemoAudit({ action: 'AI_CHECK', entity_type: 'clinical_record', entity_id: options.recordId ?? 'current-record', reason: 'Bác sĩ kiểm tra tính đầy đủ của hồ sơ bằng AI' })
+  return response
 }
 
 export async function generateCounseling(record: ReturnType<typeof buildCheckerRecord>): Promise<string> {
