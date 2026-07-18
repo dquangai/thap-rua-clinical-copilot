@@ -11,8 +11,13 @@ import type { AuthSession, AuthStatus, AuthTokens, AuthUser } from '../types/aut
 const SESSION_STORAGE_KEY = 'thap-rua.auth.session.v1'
 const REFRESH_EARLY_SECONDS = 60
 
-export const DEMO_DOCTOR_EMAIL = 'bacsi.demo@thaprua.vn'
-export const DEMO_DOCTOR_PASSWORD = 'Demo@123'
+export const DEMO_DOCTOR_EMAIL = 'admin@thaprua.vn'
+export const DEMO_DOCTOR_PASSWORD = 'Admin@123'
+export const DEMO_ACCOUNTS = [
+  { id: 'demo-admin', email: 'admin@thaprua.vn', password: 'Admin@123', role: 'SUPER_ADMIN' as const, fullName: 'Quản trị viên', department: 'Quản trị hệ thống' },
+  { id: 'demo-doctor-hanh', email: 'myhanh@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Lê Thị Mỹ Hạnh', department: 'Khoa Sản' },
+  { id: 'demo-doctor-huong', email: 'thihuong@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Nguyễn Thị Hương', department: 'Khoa Sản' },
+]
 
 interface AuthStore {
   status: AuthStatus
@@ -25,7 +30,7 @@ interface AuthStore {
   error: string | null
   initialize: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
-  enterDemoMode: () => void
+  enterDemoMode: (email?: string) => void
   logout: () => Promise<void>
   refreshSession: () => Promise<void>
   clearError: () => void
@@ -164,11 +169,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }
   },
 
-  enterDemoMode: () => {
+  enterDemoMode: (email = DEMO_DOCTOR_EMAIL) => {
+    const account = DEMO_ACCOUNTS.find((item) => item.email === email) ?? DEMO_ACCOUNTS[0]
     clearStoredSession()
     set({
       status: 'authenticated',
-      user: { id: 'demo-doctor', email: DEMO_DOCTOR_EMAIL },
+      user: { id: account.id, email: account.email, role: account.role, active: true, fullName: account.fullName, department: account.department },
       accessToken: null,
       refreshToken: null,
       expiresAt: null,

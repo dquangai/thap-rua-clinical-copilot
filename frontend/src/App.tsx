@@ -45,6 +45,7 @@ import {
 import { mockPatients, statusSummary } from './data/mockPatients'
 import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
+import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import type { AiCheckResponse } from './types/aiCheck'
@@ -161,6 +162,10 @@ function Sidebar() {
   const logout = useAuthStore((state) => state.logout)
   const isSubmitting = useAuthStore((state) => state.isSubmitting)
   const authUser = useAuthStore((state) => state.user)
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '')
+  const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
+  const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
+  const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
 
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
@@ -180,11 +185,16 @@ function Sidebar() {
             <span>{label}</span>
           </NavLink>
         ))}
+        {['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '') && (
+          <NavLink to="/admin" className={({ isActive }) => `${styles.navLink} ${isActive ? styles.navLinkActive : ''}`}>
+            <ShieldCheck size={18} /><span>Quản trị hệ thống</span>
+          </NavLink>
+        )}
       </nav>
       <div className={styles.sidebarFooter}>
         <div className={styles.sidebarDoctor} title={authUser?.email ?? undefined}>
-          <span>HM</span>
-          <div><strong>BS. Lê Thị Mỹ Hạnh</strong><small>Khoa Sản</small></div>
+          <span>{initials}</span>
+          <div><strong>{displayName}</strong><small>{displayUnit}</small></div>
         </div>
         <button type="button" className={styles.logoutButton} onClick={() => void logout()} disabled={isSubmitting}>
           <LogOut size={18} /><span>{isSubmitting ? 'Đang đăng xuất...' : 'Đăng xuất'}</span>
@@ -196,6 +206,11 @@ function Sidebar() {
 
 function Header() {
   const toggleSidebar = useClinicalStore((state) => state.toggleSidebar)
+  const authUser = useAuthStore((state) => state.user)
+  const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(authUser?.role ?? '')
+  const displayName = authUser?.fullName ?? (isAdmin ? 'Quản trị viên' : 'Bác sĩ')
+  const displayUnit = authUser?.department ?? (isAdmin ? 'Quản trị hệ thống' : 'Khoa lâm sàng')
+  const initials = isAdmin ? 'QT' : displayName.split(' ').slice(-2).map((part) => part[0]).join('').toLocaleUpperCase('vi-VN')
 
   return (
     <header className={styles.header}>
@@ -217,8 +232,8 @@ function Header() {
         <button type="button" className={styles.iconButton} aria-label="Thông báo"><Bell size={19} /></button>
         <button type="button" className={styles.iconButton} aria-label="Trợ giúp"><CircleHelp size={19} /></button>
         <div className={styles.headerDoctor}>
-          <span className={styles.avatar}>HM</span>
-          <div><strong>BS. Lê Thị Mỹ Hạnh</strong><small>Khoa Sản</small></div>
+          <span className={styles.avatar}>{initials}</span>
+          <div><strong>{displayName}</strong><small>{displayUnit}</small></div>
           <ChevronDown size={15} />
         </div>
       </div>
@@ -923,13 +938,15 @@ export default function App() {
     <Routes>
       <Route path="/dang-nhap" element={<LoginPage />} />
       <Route path="/" element={<Navigate to={AUTH_BYPASS ? '/ho-so-benh-an' : '/dang-nhap'} replace />} />
+      <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboard /></ProtectedRoute>} />
       <Route path="*" element={<ProtectedRoute><HisWorkspace /></ProtectedRoute>} />
     </Routes>
   )
 }
 
-function ProtectedRoute({ children }: { children: ReactNode }) {
+function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; adminOnly?: boolean }) {
   const status = useAuthStore((state) => state.status)
+  const user = useAuthStore((state) => state.user)
   const location = useLocation()
 
   if (AUTH_BYPASS) return children
@@ -937,6 +954,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   if (status !== 'authenticated') {
     return <Navigate to="/dang-nhap" replace state={{ from: location }} />
   }
+  if (adminOnly && !['ADMIN', 'SUPER_ADMIN'].includes(user?.role ?? '')) return <Navigate to="/ho-so-benh-an" replace />
 
   return children
 }

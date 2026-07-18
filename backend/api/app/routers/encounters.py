@@ -32,7 +32,7 @@ def list_encounters(
     _: CurrentUser = Depends(get_current_user),
     db: Client = Depends(get_admin_client),
 ):
-    request = db.table("encounters").select("*").order("created_at")
+    request = db.table("encounters").select("*").is_("deleted_at", "null").order("created_at")
     if department_id:
         request = request.eq("department_id", str(department_id))
     if encounter_status:
@@ -75,12 +75,12 @@ def create_note(encounter_id: UUID, payload: ClinicalNoteCreate, actor: CurrentU
 
 @router.get("/{encounter_id}/workspace", response_model=Workspace)
 def get_workspace(encounter_id: UUID, _: CurrentUser = Depends(get_current_user), db: Client = Depends(get_admin_client)):
-    rows = db.table("encounters").select("*, patient:patients(*)").eq("id", str(encounter_id)).limit(1).execute().data
+    rows = db.table("encounters").select("*, patient:patients(*)").eq("id", str(encounter_id)).is_("deleted_at", "null").limit(1).execute().data
     if not rows:
         raise HTTPException(status_code=404, detail="Encounter not found")
     encounter = rows[0]
     patient = encounter.pop("patient")
-    notes = db.table("clinical_notes").select("*").eq("encounter_id", str(encounter_id)).order("authored_at").execute().data
+    notes = db.table("clinical_notes").select("*").eq("encounter_id", str(encounter_id)).is_("deleted_at", "null").order("authored_at").execute().data
     vital_rows = db.table("vital_signs").select("*").eq("encounter_id", str(encounter_id)).limit(1).execute().data
     diagnoses = db.table("diagnoses").select("*").eq("encounter_id", str(encounter_id)).execute().data
     conclusion_rows = db.table("clinical_conclusions").select("*").eq("encounter_id", str(encounter_id)).limit(1).execute().data
