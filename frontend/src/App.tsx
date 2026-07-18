@@ -59,6 +59,7 @@ import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
 import { useClinicalStore } from './store/useClinicalStore'
 import { fetchLabSummaryPdf, requestLabNarrative } from './api/labAnalysisApi'
+import { bookFollowUp, suggestFollowUp, type SuggestFollowUpResponse } from './api/appointmentsApi'
 import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
@@ -930,6 +931,126 @@ function CounselingModal({
   )
 }
 
+type AppointmentState = {
+  open: boolean
+  loading: boolean
+  error: string
+  data: SuggestFollowUpResponse | null
+  selected: string
+  booking: boolean
+  bookedDate: string
+}
+
+const APPOINTMENT_LOAD_LABELS: Record<string, string> = {
+  thua: 'Còn thưa',
+  vua: 'Vừa phải',
+  dong: 'Khá đông',
+  day: 'Đã đầy',
+}
+
+const APPOINTMENT_SOURCE_LABELS: Record<string, string> = {
+  treatment_plan: 'theo hướng xử trí',
+  pregnancy_weeks: 'theo tuổi thai',
+  default: 'theo lịch khám định kỳ',
+}
+
+const formatAppointmentDate = (iso: string) => {
+  const [year, month, day] = iso.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function AppointmentModal({
+  patient,
+  state,
+  onSelect,
+  onConfirm,
+  onClose,
+}: {
+  patient: PatientRecord
+  state: AppointmentState
+  onSelect: (date: string) => void
+  onConfirm: () => void
+  onClose: () => void
+}) {
+  const { loading, error, data, selected, booking, bookedDate } = state
+  return createPortal(
+    <div className={styles.aiModalOverlay} role="dialog" aria-modal="true" aria-label="Đặt lịch tái khám">
+      <div className={`${styles.aiModal} ${styles.apptModal}`}>
+        <header className={styles.aiModalHead}>
+          <div><CalendarDays size={17} /><h2>Đặt lịch tái khám</h2></div>
+          <button type="button" onClick={onClose} aria-label="Đóng đặt lịch tái khám"><X size={16} /></button>
+        </header>
+        <div className={styles.apptBody}>
+          {loading && (
+            <div className={styles.aiLoading}>
+              <LoaderCircle size={22} className={styles.aiSpinner} />
+              <p>Đang tính ngày hẹn và tải phòng khám...</p>
+            </div>
+          )}
+          {!loading && error && <div className={styles.aiError}><TriangleAlert size={16} /><p>{error}</p></div>}
+          {!loading && !error && bookedDate && (
+            <div className={styles.apptSuccess}>
+              <CircleCheck size={22} />
+              <div>
+                <strong>Đã hẹn tái khám ngày {formatAppointmentDate(bookedDate)}</strong>
+                <p>Bệnh nhân {patient.fullName} ({patient.medicalId}). Lịch đã được ghi nhận vào tải của ngày hẹn.</p>
+              </div>
+            </div>
+          )}
+          {!loading && !error && !bookedDate && data && (
+            <>
+              <p className={styles.apptIntro}>
+                Hẹn sau <strong>{data.interval_days} ngày</strong> ({APPOINTMENT_SOURCE_LABELS[data.interval_source]}),
+                ngày lý tưởng <strong>{formatAppointmentDate(data.ideal_date)}</strong>.
+                Hệ thống đề xuất ngày cân bằng tải — bác sĩ chọn và xác nhận:
+              </p>
+              <div className={styles.apptList}>
+                {data.candidates.map((candidate) => {
+                  const full = candidate.label === 'day'
+                  const isSelected = candidate.date === selected
+                  return (
+                    <button
+                      key={candidate.date}
+                      type="button"
+                      disabled={full}
+                      onClick={() => onSelect(candidate.date)}
+                      className={`${styles.apptRow} ${isSelected ? styles.apptRowSelected : ''}`}
+                    >
+                      <span className={styles.apptDay}>
+                        <strong>{candidate.weekday}</strong> {formatAppointmentDate(candidate.date)}
+                        {candidate.recommended && <em className={styles.apptRecommended}>Đề xuất</em>}
+                      </span>
+                      <span className={styles.apptLoad}>
+                        <span className={styles.apptBar}>
+                          <span
+                            className={`${styles.apptBarFill} ${styles[`apptTone_${candidate.label}`]}`}
+                            style={{ width: `${Math.min(100, Math.round((candidate.load / candidate.capacity) * 100))}%` }}
+                          />
+                        </span>
+                        {candidate.load}/{candidate.capacity} · {APPOINTMENT_LOAD_LABELS[candidate.label]}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </div>
+        <footer className={styles.apptFooter}>
+          {!bookedDate && data && !loading && !error && (
+            <button type="button" className={styles.apptConfirm} disabled={!selected || booking} onClick={onConfirm}>
+              {booking ? <LoaderCircle size={15} className={styles.aiSpinner} /> : <CircleCheck size={15} />}
+              {selected ? `Xác nhận hẹn ngày ${formatAppointmentDate(selected)}` : 'Chọn một ngày hẹn'}
+            </button>
+          )}
+          <span className={styles.aiDisclaimer}>Hệ thống chỉ đề xuất ngày; bác sĩ quyết định và có thể chọn ngày khác.</span>
+        </footer>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
   const [vitalEdits, setVitalEdits] = useState({
@@ -960,6 +1081,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const [counselingText, setCounselingText] = useState(patient.counselingRecord)
   const [counselingLoading, setCounselingLoading] = useState(false)
   const [counselingOpen, setCounselingOpen] = useState(false)
+  const [appointment, setAppointment] = useState<AppointmentState>({ open: false, loading: false, error: '', data: null, selected: '', booking: false, bookedDate: '' })
   const patientIdRef = useRef(patient.medicalId)
   const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
   const [aiCheckMinimized, setAiCheckMinimized] = useState(false)
@@ -974,6 +1096,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
     setCounselingText(patient.counselingRecord)
     setCounselingLoading(false)
     setCounselingOpen(false)
+    setAppointment({ open: false, loading: false, error: '', data: null, selected: '', booking: false, bookedDate: '' })
     setAiCheck({ open: false, loading: false, error: '', data: null })
     setAiCheckMinimized(false)
   }, [patient.medicalId, patient.counselingRecord])
@@ -1089,6 +1212,44 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
     }
   }
 
+  const handleOpenAppointment = async () => {
+    const forPatient = patient.medicalId
+    setAppointment({ open: true, loading: true, error: '', data: null, selected: '', booking: false, bookedDate: '' })
+    try {
+      const data = await suggestFollowUp({
+        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+        pregnancyWeeks: vitalSigns.pregnancyWeeks,
+      })
+      if (patientIdRef.current !== forPatient) return
+      const recommended = data.candidates.find((candidate) => candidate.recommended)
+      setAppointment((state) => ({ ...state, loading: false, data, selected: recommended?.date ?? '' }))
+    } catch (error) {
+      if (patientIdRef.current !== forPatient) return
+      const message = error instanceof Error ? error.message : 'Lỗi không xác định khi tính lịch tái khám'
+      setAppointment((state) => ({ ...state, loading: false, error: message }))
+    }
+  }
+
+  const handleConfirmAppointment = async () => {
+    if (!appointment.selected) return
+    const forPatient = patient.medicalId
+    setAppointment((state) => ({ ...state, booking: true }))
+    try {
+      const result = await bookFollowUp({
+        medicalId: patient.medicalId,
+        patientName: patient.fullName,
+        date: appointment.selected,
+      })
+      if (patientIdRef.current !== forPatient) return
+      setAppointment((state) => ({ ...state, booking: false, bookedDate: result.appointment.date }))
+      notify(`Đã hẹn tái khám ngày ${formatAppointmentDate(result.appointment.date)}`)
+    } catch (error) {
+      if (patientIdRef.current !== forPatient) return
+      const message = error instanceof Error ? error.message : 'Không đặt được lịch hẹn'
+      setAppointment((state) => ({ ...state, booking: false, error: message }))
+    }
+  }
+
   const runAiCheck = async () => {
     const forPatient = patient.medicalId
     const notes = readAiNotes()
@@ -1200,6 +1361,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
               <div className={styles.noteTools}>
                 <button type="button" onClick={() => notify('Đã tạo mẫu')}><ClipboardPlus size={14} />Tạo mẫu</button>
                 <button type="button" onClick={() => notify('Đã load mẫu')}><ListRestart size={14} />Load mẫu</button>
+                <button type="button" onClick={handleOpenAppointment}><CalendarDays size={14} />Hẹn tái khám</button>
               </div>
               <textarea key={`${patient.medicalId}-plan`} ref={planRef} defaultValue={patient.treatmentPlan} aria-label="Hướng xử trí" />
             </div>
@@ -1236,6 +1398,15 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
                 onChange={setCounselingText}
                 onRegenerate={handleGenerateCounseling}
                 onClose={() => setCounselingOpen(false)}
+              />
+            )}
+            {appointment.open && (
+              <AppointmentModal
+                patient={patient}
+                state={appointment}
+                onSelect={(date) => setAppointment((state) => ({ ...state, selected: date }))}
+                onConfirm={handleConfirmAppointment}
+                onClose={() => setAppointment((state) => ({ ...state, open: false }))}
               />
             )}
           </article>

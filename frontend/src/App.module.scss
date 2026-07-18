@@ -923,6 +923,134 @@
   }
 }
 
+.apptModal { width: min(520px, 100%); }
+
+.apptBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+
+.apptIntro {
+  margin: 0 0 12px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #2c414c;
+}
+
+.apptList {
+  display: grid;
+  gap: 8px;
+}
+
+.apptRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: #fff;
+  text-align: left;
+  font-size: 11px;
+
+  &:hover:not(:disabled) { border-color: var(--brand-blue); background: #f7fafd; }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+
+.apptRowSelected {
+  border-color: var(--brand-navy);
+  background: #eef4fb;
+  box-shadow: 0 0 0 2px rgba(19, 77, 139, .15);
+}
+
+.apptDay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  strong { font-size: 11.5px; }
+}
+
+.apptRecommended {
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--teal-600);
+  color: #fff;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.apptLoad {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #52707e;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.apptBar {
+  width: 74px;
+  height: 7px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #e6ecf2;
+}
+
+.apptBarFill {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+}
+
+.apptTone_thua { background: #3d9c6a; }
+.apptTone_vua { background: #4f86c6; }
+.apptTone_dong { background: #d9932f; }
+.apptTone_day { background: #c8452f; }
+
+.apptSuccess {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #bfe0cc;
+  border-radius: 9px;
+  background: #f1faf4;
+  color: #1d5c38;
+
+  strong { display: block; margin-bottom: 4px; font-size: 12.5px; }
+  p { margin: 0; font-size: 11px; line-height: 1.5; }
+  svg { flex: 0 0 auto; margin-top: 2px; }
+}
+
+.apptFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-soft);
+}
+
+.apptConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--brand-navy);
+  color: #fff;
+  font-size: 11.5px;
+  font-weight: 750;
+
+  &:hover:not(:disabled) { background: #0e3d71; }
+  &:disabled { opacity: .55; cursor: not-allowed; }
+}
+
 .counselingEmpty {
   display: flex;
   flex-direction: column;
