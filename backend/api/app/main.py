@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Thap Rua Clinical API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.frontend_origin],
+    allow_origins=settings.allowed_frontend_origins,
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+" if settings.app_env == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],

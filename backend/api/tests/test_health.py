@@ -10,6 +10,33 @@ def test_health():
     assert response.json()["service"] == "clinical-api"
 
 
+def test_cors_preflight_allows_configured_frontend():
+    response = TestClient(app).options(
+        "/api/v1/ai/check-record",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_cors_preflight_allows_render_frontend():
+    origin = "https://thap-rua-clinical-copilot-1.onrender.com"
+    response = TestClient(app).options(
+        "/api/v1/ai/check-record",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
 def test_ready_pings_database(monkeypatch):
     class Database:
         def command(self, command: str):

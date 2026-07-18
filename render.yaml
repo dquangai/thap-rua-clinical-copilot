@@ -25,7 +25,7 @@ services:
       - key: PII_FAIL_CLOSED
         value: "true"
       - key: FRONTEND_ORIGIN
-        sync: false
+        value: https://thap-rua-clinical-copilot-1.onrender.com
       - key: MONGODB_URI
         sync: false
       - key: SUPABASE_URL
