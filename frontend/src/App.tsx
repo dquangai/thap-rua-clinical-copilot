@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import {
   Activity,
@@ -31,10 +32,12 @@ import {
   Pill,
   PanelLeftClose,
   PanelLeftOpen,
+  Printer,
   Save,
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Stethoscope,
   Syringe,
   TriangleAlert,
@@ -43,7 +46,7 @@ import {
   X,
 } from 'lucide-react'
 import { mockPatients, statusSummary } from './data/mockPatients'
-import { buildCheckerRecord, checkClinicalRecord } from './lib/aiCheck'
+import { buildCheckerRecord, checkClinicalRecord, generateCounseling } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
 import AdminDashboard from './pages/AdminDashboard'
 import { useAuthStore } from './store/useAuthStore'
@@ -52,9 +55,6 @@ import type { AiCheckResponse } from './types/aiCheck'
 import type { PatientRecord, PatientStatus } from './types/clinical'
 import thapRuaMark from './assets/thap-rua-mark.svg'
 import styles from './App.module.scss'
-
-// Bypass đăng nhập khi test local chưa có Supabase; bật bằng VITE_AUTH_BYPASS=true trong frontend/.env.local
-const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === 'true'
 
 const navigation = [
   { label: 'Tổng quan', icon: House, path: '/tong-quan' },
@@ -648,6 +648,102 @@ function AiCheckModal({ state, patient, notes, onEditNotes, onAppendNotes, onEdi
   )
 }
 
+function CounselingModal({
+  patient,
+  content,
+  loading,
+  onChange,
+  onRegenerate,
+  onClose,
+}: {
+  patient: PatientRecord
+  content: string
+  loading: boolean
+  onChange: (value: string) => void
+  onRegenerate: () => void
+  onClose: () => void
+}) {
+  const today = new Date()
+  return createPortal(
+    <div className={`${styles.aiModalOverlay} ${styles.counselingOverlay}`} role="dialog" aria-modal="true" aria-label="Biên bản tư vấn">
+      <div className={`${styles.aiModal} ${styles.counselingModal}`}>
+        <header className={`${styles.aiModalHead} ${styles.screenOnly}`}>
+          <div><FileText size={17} /><h2>Biên bản tư vấn</h2></div>
+          <div className={styles.counselingActions}>
+            <button type="button" onClick={onRegenerate} disabled={loading}>
+              {loading ? <LoaderCircle size={14} className={styles.aiSpinner} /> : <Sparkles size={14} />}
+              Tạo lại (AI)
+            </button>
+            <button type="button" onClick={() => window.print()} disabled={loading || !content}>
+              <Printer size={14} />In / Xuất PDF
+            </button>
+            <button type="button" className={styles.counselingCloseButton} onClick={onClose} aria-label="Đóng biên bản tư vấn"><X size={16} /></button>
+          </div>
+        </header>
+        <div className={styles.counselingBody}>
+          <div className={styles.counselingDoc}>
+            <header className={styles.docHead}>
+              <div>
+                <strong>PHÒNG KHÁM THÁP RÙA</strong>
+                <span>{patient.department}</span>
+              </div>
+              <div className={styles.docMotto}>
+                <strong>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</strong>
+                <span>Độc lập - Tự do - Hạnh phúc</span>
+              </div>
+            </header>
+            <h1 className={styles.docTitle}>BIÊN BẢN TƯ VẤN</h1>
+            <div className={styles.docInfo}>
+              <p>Họ và tên bệnh nhân: <strong>{patient.fullName}</strong></p>
+              <p>Năm sinh: {patient.birthYear} ({patient.ageText}) — Giới tính: {patient.gender}</p>
+              <p>Mã bệnh nhân: {patient.medicalId} — Số điện thoại: {patient.phone}</p>
+              <p>Địa chỉ: {patient.address}</p>
+              <p>Chẩn đoán: <strong>{patient.diagnoses.primaryCode}</strong> — {patient.diagnoses.primaryDescription}</p>
+            </div>
+            <h2 className={styles.docSection}>NỘI DUNG TƯ VẤN</h2>
+            {loading ? (
+              <div className={styles.aiLoading}>
+                <LoaderCircle size={22} className={styles.aiSpinner} />
+                <p>AI đang soạn nội dung tư vấn từ hồ sơ (đã ẩn thông tin định danh)...</p>
+              </div>
+            ) : (
+              <>
+                <textarea
+                  className={`${styles.docContentInput} ${styles.screenOnly}`}
+                  value={content}
+                  onChange={(event) => onChange(event.target.value)}
+                  placeholder="Chưa có nội dung tư vấn. Bấm 'Tạo lại (AI)' để AI soạn từ hồ sơ, hoặc gõ trực tiếp."
+                  aria-label="Nội dung tư vấn"
+                />
+                <div className={styles.docContentPrint}>{content}</div>
+              </>
+            )}
+            <p className={styles.docDate}>
+              Ngày {today.getDate()} tháng {today.getMonth() + 1} năm {today.getFullYear()}
+            </p>
+            <div className={styles.docSignatures}>
+              <div>
+                <strong>BÁC SĨ TƯ VẤN</strong>
+                <span>(Ký, ghi rõ họ tên)</span>
+                <em>{patient.doctor}</em>
+              </div>
+              <div>
+                <strong>BỆNH NHÂN</strong>
+                <span>(Ký, ghi rõ họ tên)</span>
+                <em>{patient.fullName}</em>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer className={`${styles.counselingFooter} ${styles.screenOnly}`}>
+          <button type="button" onClick={onClose}><Save size={15} />Lưu và đóng</button>
+        </footer>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
   const [vitalEdits, setVitalEdits] = useState({
@@ -675,8 +771,43 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const progressRef = useRef<HTMLTextAreaElement>(null)
   const planRef = useRef<HTMLTextAreaElement>(null)
   const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
-  const counselingRef = useRef<HTMLTextAreaElement>(null)
+  const [counselingText, setCounselingText] = useState(patient.counselingRecord)
+  const [counselingLoading, setCounselingLoading] = useState(false)
+  const [counselingOpen, setCounselingOpen] = useState(false)
+  const patientIdRef = useRef(patient.medicalId)
   const [aiCheck, setAiCheck] = useState<AiCheckState>({ open: false, loading: false, error: '', data: null })
+
+  useEffect(() => {
+    patientIdRef.current = patient.medicalId
+    setCounselingText(patient.counselingRecord)
+    setCounselingLoading(false)
+    setCounselingOpen(false)
+  }, [patient.medicalId, patient.counselingRecord])
+
+  const handleGenerateCounseling = async () => {
+    const forPatient = patient.medicalId
+    setCounselingOpen(true)
+    setCounselingLoading(true)
+    try {
+      const record = buildCheckerRecord(patient, {
+        clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
+        treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
+        diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
+        counselingRecord: '',
+      })
+      const generated = await generateCounseling(record)
+      // Bỏ kết quả về trễ nếu bác sĩ đã chuyển sang bệnh nhân khác.
+      if (patientIdRef.current !== forPatient) return
+      setCounselingText(generated)
+      notify('AI đã tạo nội dung tư vấn theo hồ sơ')
+    } catch (error) {
+      if (patientIdRef.current === forPatient) {
+        notify(error instanceof Error ? error.message : 'Lỗi không xác định khi tạo nội dung tư vấn')
+      }
+    } finally {
+      if (patientIdRef.current === forPatient) setCounselingLoading(false)
+    }
+  }
 
   const runAiCheck = async () => {
     setAiCheck({ open: true, loading: true, error: '', data: null })
@@ -685,7 +816,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
         clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
         treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
         diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
-        counselingRecord: counselingRef.current?.value ?? patient.counselingRecord,
+        counselingRecord: counselingText,
       })
       const data = await checkClinicalRecord(record)
       setAiCheck((state) => ({ ...state, loading: false, data }))
@@ -750,18 +881,37 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
 
           <article className={`${styles.clinicalCard} ${styles.planCard}`}>
             <header className={styles.cardHeader}><FileText size={16} /><h3>Biên bản tư vấn</h3></header>
-            <div className={styles.noteBody}>
-              <div className={styles.noteTools}>
-                <button type="button" onClick={() => notify('Đã load mẫu tư vấn')}><ListRestart size={14} />Load mẫu</button>
+            {counselingText ? (
+              <div className={styles.noteBody}>
+                <div className={styles.noteTools}>
+                  <button type="button" onClick={() => setCounselingOpen(true)}><FileText size={14} />Mở biên bản</button>
+                  <button type="button" onClick={() => setCounselingText('')} disabled={counselingLoading}><Eraser size={14} />Xóa</button>
+                </div>
+                <textarea
+                  value={counselingText}
+                  onChange={(event) => setCounselingText(event.target.value)}
+                  aria-label="Biên bản tư vấn"
+                />
               </div>
-              <textarea
-                key={`${patient.medicalId}-counseling`}
-                ref={counselingRef}
-                defaultValue={patient.counselingRecord}
-                placeholder="Bắt buộc với bệnh nhân có bệnh lý: ghi nguy cơ đã tư vấn, kế hoạch theo dõi, dặn dò dấu hiệu cần khám ngay. Dùng ngôn ngữ cân bằng, không gây hoang mang."
-                aria-label="Biên bản tư vấn"
+            ) : (
+              <div className={styles.counselingEmpty}>
+                <p>Chưa có biên bản tư vấn. Bắt buộc với bệnh nhân có bệnh lý/nguy cơ.</p>
+                <button type="button" onClick={handleGenerateCounseling} disabled={counselingLoading}>
+                  {counselingLoading ? <LoaderCircle size={15} className={styles.aiSpinner} /> : <Sparkles size={15} />}
+                  {counselingLoading ? 'AI đang soạn nội dung...' : 'Tạo biên bản tư vấn'}
+                </button>
+              </div>
+            )}
+            {counselingOpen && (
+              <CounselingModal
+                patient={patient}
+                content={counselingText}
+                loading={counselingLoading}
+                onChange={setCounselingText}
+                onRegenerate={handleGenerateCounseling}
+                onClose={() => setCounselingOpen(false)}
               />
-            </div>
+            )}
           </article>
 
           </div>
@@ -864,14 +1014,23 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
           clinicalProgress: progressRef.current?.value ?? patient.clinicalProgress,
           treatmentPlan: planRef.current?.value ?? patient.treatmentPlan,
           diagnosisSummary: diagnosisSummaryRef.current?.value ?? patient.diagnoses.summary,
-          counselingRecord: counselingRef.current?.value ?? patient.counselingRecord,
+          counselingRecord: counselingText,
         }}
         onEditNotes={(field, value) => {
-          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef, counselingRecord: counselingRef }
+          // Biên bản tư vấn quản lý bằng state (modal + AI generate), các ô còn lại là textarea uncontrolled.
+          if (field === 'counselingRecord') {
+            setCounselingText(value)
+            return
+          }
+          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
           if (refs[field].current) refs[field].current.value = value
         }}
         onAppendNotes={(field, value) => {
-          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef, counselingRecord: counselingRef }
+          if (field === 'counselingRecord') {
+            setCounselingText((current) => `${current}${current ? '\n' : ''}${value}`)
+            return
+          }
+          const refs = { clinicalProgress: progressRef, treatmentPlan: planRef, diagnosisSummary: diagnosisSummaryRef }
           const target = refs[field].current
           if (target) target.value = `${target.value}${target.value ? '\n' : ''}${value}`
         }}
@@ -948,8 +1107,6 @@ function ProtectedRoute({ children, adminOnly = false }: { children: ReactNode; 
   const status = useAuthStore((state) => state.status)
   const user = useAuthStore((state) => state.user)
   const location = useLocation()
-
-  if (AUTH_BYPASS) return children
 
   if (status !== 'authenticated') {
     return <Navigate to="/dang-nhap" replace state={{ from: location }} />

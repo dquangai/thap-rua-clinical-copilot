@@ -11,6 +11,7 @@ import type { AuthSession, AuthStatus, AuthTokens, AuthUser } from '../types/aut
 const SESSION_STORAGE_KEY = 'thap-rua.auth.session.v1'
 const REFRESH_EARLY_SECONDS = 60
 
+<<<<<<< HEAD
 export const DEMO_DOCTOR_EMAIL = 'admin@thaprua.vn'
 export const DEMO_DOCTOR_PASSWORD = 'Admin@123'
 export const DEMO_ACCOUNTS = [
@@ -18,6 +19,11 @@ export const DEMO_ACCOUNTS = [
   { id: 'demo-doctor-hanh', email: 'myhanh@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Lê Thị Mỹ Hạnh', department: 'Khoa Sản' },
   { id: 'demo-doctor-huong', email: 'thihuong@thaprua.vn', password: 'Bacsi@123', role: 'DOCTOR' as const, fullName: 'BS. Nguyễn Thị Hương', department: 'Khoa Sản' },
 ]
+=======
+// Tài khoản demo đăng nhập cục bộ, không cần Supabase.
+export const DEMO_DOCTOR_EMAIL = 'bacsi.demo@thaprua.vn'
+export const DEMO_DOCTOR_PASSWORD = 'Demo@123'
+>>>>>>> 75e81f8cea0395a4403535953982e2d9325aad19
 
 interface AuthStore {
   status: AuthStatus
@@ -26,7 +32,6 @@ interface AuthStore {
   refreshToken: string | null
   expiresAt: number | null
   isSubmitting: boolean
-  isDemoMode: boolean
   error: string | null
   initialize: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
@@ -89,7 +94,6 @@ function stateFrom(tokens: AuthTokens, user: AuthUser) {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
     expiresAt: tokens.expires_at,
-    isDemoMode: false,
     error: null,
   }
 }
@@ -101,7 +105,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   refreshToken: null,
   expiresAt: null,
   isSubmitting: false,
-  isDemoMode: false,
   error: null,
 
   initialize: async () => {
@@ -142,7 +145,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           accessToken: null,
           refreshToken: null,
           expiresAt: null,
-          isDemoMode: false,
           error: messageFor(error),
         })
       }
@@ -179,7 +181,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       refreshToken: null,
       expiresAt: null,
       isSubmitting: false,
-      isDemoMode: true,
       error: null,
     })
   },
@@ -200,7 +201,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         refreshToken: null,
         expiresAt: null,
         isSubmitting: false,
-        isDemoMode: false,
         error: null,
       })
     }
@@ -222,7 +222,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         accessToken: null,
         refreshToken: null,
         expiresAt: null,
-        isDemoMode: false,
         error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
       })
     }
