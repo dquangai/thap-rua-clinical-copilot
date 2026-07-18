@@ -1,109 +1,160 @@
 # Tháp Rùa Clinical Copilot
 
-Nền tảng HIS/EMR cho phòng khám sản khoa, tích hợp **trợ lý AI hỗ trợ nhân viên y tế**: rà soát tuân thủ hồ sơ bệnh án, soạn nháp biên bản tư vấn in được, và tổng hợp kết quả xét nghiệm — tất cả theo nguyên tắc **bác sĩ quyết định, AI chỉ hỗ trợ** (human-in-the-loop).
+[![Backend CI](https://github.com/dquangai/thap-rua-clinical-copilot/actions/workflows/ci.yml/badge.svg)](https://github.com/dquangai/thap-rua-clinical-copilot/actions/workflows/ci.yml)
 
-> Mọi kết quả AI là gợi ý hoặc bản nháp chờ bác sĩ duyệt. AI không tự ghi vào hồ sơ, không chẩn đoán, không chỉ định điều trị. Khuyến cáo "Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế" hiển thị thường trực.
+**Trợ lý AI "non-intrusive" cho phòng khám sản khoa** — rà soát tuân thủ hồ sơ bệnh án theo bộ tiêu chí chuyên môn, soạn nháp biên bản tư vấn in được khổ A4, gợi ý lịch tái khám cân bằng tải phòng khám, tổng hợp xét nghiệm và kê toa. Nguyên tắc xuyên suốt: **AI chỉ đề xuất — bác sĩ Approve, chỉnh sửa và ký**.
 
-## Tính năng
+> **English summary:** An AI copilot for Vietnamese obstetric clinics, deployed to production. Four AI pipelines (clinical-compliance checking against JSON-defined rule sets, counseling-record drafting with printable A4 output, AI-reasoned follow-up scheduling with clinic load balancing, lab-result synthesis) built on a human-in-the-loop UX: the AI never writes to the record — physicians approve each suggestion. PII scrubbing is fail-closed before every LLM call; outputs are schema-validated; every AI call is hash-audited and linked to a specific record version. 63 automated tests, CI, job queue + rate limiting + content-based caching, LLM-provider-agnostic (verified by migrating DeepSeek → OpenAI via env vars only).
 
-### Không gian khám bệnh (bác sĩ)
-- Danh sách bệnh nhân theo trạng thái hàng đợi, tìm kiếm, hồ sơ khám đầy đủ (hành chính, sinh hiệu, thai kỳ, diễn biến, chẩn đoán ICD-10, hướng xử trí).
-- **Kiểm tra hồ sơ (AI)** — đối chiếu hồ sơ với bộ tiêu chí khám thai (`rules/`, nhóm R01–R08), trả kết quả dạng "phiếu khám": tiêu chí chưa đạt kèm lý do, mức NGHIÊM TRỌNG đánh dấu riêng, **gợi ý sửa hiển thị ngay tại vị trí tương ứng** — bác sĩ bấm chấp nhận mới áp dụng vào hồ sơ.
-- **Biên bản tư vấn** — AI soạn bản nháp theo đúng bệnh cảnh của ca (nguy cơ, kế hoạch theo dõi, dấu hiệu cần khám ngay); mở trong mẫu văn bản hành chính (quốc hiệu, thông tin bệnh nhân, chẩn đoán, khu ký tên hai bên), chỉnh sửa trực tiếp và **in / xuất PDF khổ A4**.
-- **Tổng hợp xét nghiệm** — hệ thống đối chiếu số học trước, AI chỉ tóm tắt các chỉ số bất thường thành câu tiếng Việt theo mẫu cố định; xuất phiếu PDF.
+---
 
-### Trung tâm quản trị (lãnh đạo phòng khám)
-- Thống kê tài khoản, tổng lượt gọi AI, độ trễ P95, chi phí AI quy đổi.
-- Nhật ký sử dụng AI theo từng lượt (endpoint, model, token vào/ra, chi phí), quản lý tài khoản bác sĩ.
+## ⚡ Dành cho giám khảo: test trong 90 giây
 
-### Hạ tầng AI
-- **Bảo vệ dữ liệu bệnh nhân**: allowlist trường được phép + xoá mẫu định danh (email, SĐT, số ID, mã BN/BHYT, ngày tuyệt đối) trước mọi lời gọi LLM; quét lần cuối **fail-closed** — còn nghi vấn PII là huỷ request.
-- **Hàng đợi AI jobs** (`POST /ai/jobs` → poll) với giới hạn worker/độ sâu cấu hình được; quá tải trả `429 + Retry-After`.
-- **Cache kết quả AI** theo hash(hồ sơ đã ẩn danh + bộ tiêu chí + prompt + model): hồ sơ không đổi → trả ngay, 0 token.
-- **Phiên bản hoá hồ sơ** (`clinical_record_versions`) và gắn kết quả AI với phiên bản cụ thể để truy vết.
-- **Audit đầy đủ**: mỗi lượt gọi ghi hash prompt/rules/input, phiên bản pipeline, latency, token — không ghi nội dung lâm sàng vào log kỹ thuật.
-- **Không khoá vào một nhà cung cấp LLM**: đổi OpenAI / DeepSeek / Anthropic bằng biến môi trường, không sửa mã.
+1. Mở bản deploy: **https://thap-ruafrontend-production.up.railway.app** (hoặc https://thap-rua-clinical-copilot-1.onrender.com) — backend health: https://thap-rua-clinical-copilot.onrender.com/health
+2. Bấm nút **"Chế độ demo"** ngay trang đăng nhập → vào thẳng vai bác sĩ, không cần tài khoản.
+3. Trong danh sách bệnh nhân (cột trái), chọn ca **SIM-005 — VÕ THỊ KIM NGÂN** (thai 39 tuần + đái tháo đường thai kỳ — ca demo giàu bệnh cảnh nhất).
+4. Bấm lần lượt 3 nút: **"Tạo biên bản tư vấn"** → **"Hẹn tái khám"** → **"Kiểm tra hồ sơ (AI)"** (chi tiết từng luồng ở mục dưới).
+
+Tài khoản demo đầy đủ (nếu muốn đăng nhập từng vai):
+
+| Tài khoản | Mật khẩu | Vai trò |
+|---|---|---|
+| `admin@thaprua.vn` | `Admin@123` | Quản trị → Trung tâm quản trị (chi phí AI, tài khoản) |
+| `myhanh@thaprua.vn` | `Bacsi@123` | Bác sĩ → không gian khám bệnh |
+| `thihuong@thaprua.vn` | `Bacsi@123` | Bác sĩ thứ hai (test đa người dùng) |
+
+> Toàn bộ dữ liệu là **mô phỏng** (6 ca `SIM-001..006` phủ 3 tam cá nguyệt, có/không bệnh lý) — repo không chứa dữ liệu bệnh nhân thật.
+
+---
+
+## Ánh xạ tiêu chí chấm → bằng chứng trong repo
+
+| Tiêu chí | Bằng chứng — xem/bấm ở đâu |
+|---|---|
+| **Chất lượng triển khai kỹ thuật** | 63 tests (`backend/api/tests/` + `backend/ai/tests/`), CI `.github/workflows/ci.yml`, job queue + rate limit `backend/api/app/ai_jobs.py`, retry/backoff + concurrency limiter `backend/ai/clinical_checker/provider.py`, load test `scripts/load_test_ai_jobs.py`, đã deploy production |
+| **Kiến trúc AI-Native & Đổi mới** | Bộ tiêu chí là dữ liệu: `rules/rules_kham_thai.json`, `rules/rules_tu_van.json` (đổi quy định không sửa code); scope theo ngữ cảnh tuổi thai/bệnh lý: `backend/ai/clinical_checker/pipeline.py`; cache theo nội dung `backend/api/app/ai_cache.py`; đổi LLM bằng env (đã migration DeepSeek→OpenAI thật) |
+| **Khả thi kinh doanh & Pilot** | `docs/pilot-plan.md`: unit economics **thực đo** (~400–800đ AI/lượt khám, <0,5% doanh thu lượt khám), 3 gói giá SaaS, lộ trình pilot 4 tuần với KPI, Go/No-Go |
+| **UX AI-Native & Tư duy thiết kế** | Approve từng tiêu chí trong modal AI check; sửa nháp biên bản trước khi in/ký; modal thu nhỏ thành bong bóng nổi; re-check chỉ chạy tiêu chí chưa duyệt (`exclude_criteria`) |
+| **An toàn AI, Grounding & Độ tin cậy** | `backend/ai/clinical_checker/privacy.py`: allowlist + scrub PII + **fail-closed**; output ép JSON schema (sai là từ chối); audit hash prompt/rules/input gắn version hồ sơ (`backend/api/app/versioning.py`); disclaimer thường trực trên mọi kết quả AI |
+| **Trình bày & Bảo vệ** | README này + 8 tài liệu trong `docs/` + kịch bản demo trong `docs/pilot-plan.md` |
+
+---
+
+## Hướng dẫn test từng tính năng (theo đúng nhãn nút)
+
+### 1) Rà soát tuân thủ hồ sơ bằng AI
+*Đăng nhập bác sĩ → chọn ca SIM-005.*
+1. Bấm nút **"Kiểm tra hồ sơ (AI)"** ở thanh dưới cùng.
+2. Chờ 10–15 giây: bên trái là hồ sơ dạng "phiếu khám", bên phải là danh sách tiêu chí chưa đạt kèm lý do — mục nghiêm trọng gắn **cờ đỏ NGHIÊM TRỌNG**.
+3. Bấm **"Approve"** trên một tiêu chí → nội dung bổ sung được đưa vào hồ sơ (không bấm thì hồ sơ giữ nguyên — human-in-the-loop).
+4. Bấm nút **thu nhỏ** (góc phải header modal) → modal thành bong bóng nổi kéo-thả được; bấm bong bóng để mở lại.
+5. Bấm "Kiểm tra hồ sơ (AI)" lần nữa → hệ thống **chỉ chấm lại các tiêu chí chưa Approve** (xem `excluded_by_request_count` trong response — tiết kiệm token).
+
+### 2) Biên bản tư vấn AI + in A4
+*Cùng ca SIM-005 (có bệnh lý nên bắt buộc có biên bản).*
+1. Tại card **"Biên bản tư vấn"** (đang trống đúng thiết kế), bấm **"Tạo biên bản tư vấn"**.
+2. Chờ ~10 giây: modal văn bản hành chính mở ra — quốc hiệu, thông tin bệnh nhân, chẩn đoán, nội dung tư vấn do AI soạn theo đúng bệnh cảnh (ĐTĐ thai kỳ), khu ký tên hai bên.
+3. Sửa trực tiếp nội dung trong ô nhập → bấm **"In / Xuất PDF"** → ra đơn A4 chuẩn (chọn Save as PDF trong hộp thoại in).
+4. Bấm **"Lưu và đóng"** → card hiện nội dung, có nút **"Mở biên bản"** / **"Xóa"**. Nội dung này chính là dữ liệu chấm nhóm tiêu chí R08 khi chạy AI check.
+
+### 3) Hẹn tái khám thông minh (AI + cân bằng tải)
+1. Tại card **"Hướng xử trí"**, bấm nút **"Hẹn tái khám"**.
+2. AI đọc hồ sơ và đề xuất khoảng tái khám **kèm lý do y khoa** (khung xanh) — ví dụ ca 39 tuần + ĐTĐTK sẽ hẹn 1 tuần.
+3. Danh sách ngày ứng viên hiện **thanh tải từng ngày** (Còn thưa / Vừa phải / Khá đông / Đã đầy — ngày đầy bị khoá, Chủ nhật tự loại); ngày tốt nhất gắn nhãn **"Đề xuất"**.
+4. Chọn ngày → bấm **"Xác nhận hẹn ngày ..."**.
+5. Vào tab **"Lịch hẹn"** ở sidebar → thấy lịch vừa đặt trong lưới ngày (chọn khoảng **7/14/30 ngày**, ngày hôm nay viền đậm, mỗi ngày hiện tải + danh sách bệnh nhân).
+
+### 4) Toa thuốc
+1. Vào tab **"Toa thuốc"** ở sidebar (hoặc tab F7 trên header).
+2. Bấm **"Lấy từ hướng xử trí"** → hệ thống tự trích thuốc bác sĩ đã ghi trong hồ sơ (SIM-005 ra đúng 3 thuốc: Sắt, Acid folic, Canxi).
+3. Gõ vào ô tìm kiếm (ví dụ `paracetamol` — không dấu vẫn được) → bấm kết quả để thêm; sửa số lượng/cách dùng ngay trên bảng.
+4. Bấm **"In toa"** → ĐƠN THUỐC khổ A4 đúng thể thức, khu ký "BÁC SĨ KÊ ĐƠN".
+
+### 5) Tổng hợp xét nghiệm (AI)
+1. Vào tab **"Dịch vụ kỹ thuật"** (F8) → bấm **"Phiếu xét nghiệm tổng hợp"**.
+2. Xem phiếu đã **che thông tin cá nhân**; hệ thống đối chiếu số học và AI tóm tắt các chỉ số bất thường vào ô **"Nội dung nhận xét xét nghiệm"** (AI không chẩn đoán, không sửa số liệu).
+3. Bấm **"In phiếu xét nghiệm tổng hợp"** để xuất PDF.
+
+### 6) Trung tâm quản trị (chi phí AI minh bạch)
+1. Đăng xuất → đăng nhập `admin@thaprua.vn / Admin@123` → tự vào **/admin**.
+2. Xem thẻ tổng quan: tài khoản hoạt động, tổng API calls, latency P95, **chi phí AI quy đổi tiền**; tab nhật ký liệt kê **từng lượt gọi AI** (endpoint, model, token vào/ra, chi phí).
+
+> **Lưu ý khi chạy local:** các luồng AI cần `LLM_API_KEY` trong `.env` (xem `.env.example`). Không có key, phần HIS/UI vẫn chạy và API trả thông báo lỗi rõ ràng thay vì crash.
+
+---
 
 ## Kiến trúc
 
 ```mermaid
 flowchart LR
-  FE[React + Vite\nfrontend/] -->|/api/v1| API[FastAPI\nbackend/api]
+  FE[React + Vite + TS\nfrontend/] -->|/api/v1| API[FastAPI\nbackend/api]
   API --> DB[(MongoDB Atlas)]
-  API --> PIPE[clinical_checker\nbackend/ai]
-  PIPE -->|"hồ sơ đã ẩn danh (PII redacted)"| LLM[LLM provider\nOpenAI / DeepSeek / ...]
-  API --> QUEUE[AI job queue\nin-process, bounded]
-  API --> CACHE[(ai_artifacts\ncache + versions)]
+  API --> QUEUE[AI job queue\nbounded + rate limit]
+  API --> CACHE[(ai_artifacts\ncontent-based cache)]
+  API --> VERS[(clinical_record_versions\ndocument versioning)]
+  API --> PIPE[clinical_checker\nbackend/ai — stdlib only]
+  PIPE -->|"hồ sơ ĐÃ ẨN DANH (PII fail-closed)"| LLM[LLM provider\nOpenAI / DeepSeek / ... qua env]
+  RULES[rules/*.json\nbộ tiêu chí chuyên môn] --> PIPE
 ```
+
+**Các quyết định kiến trúc AI-native đáng chú ý:**
+- **Rules-as-data**: tiêu chí y khoa (R01–R08) là JSON có trường scope theo ngữ cảnh — cập nhật quy định không cần sửa code, không cần re-deploy; phòng khám tự chủ bộ tiêu chí.
+- **PII fail-closed**: allowlist trường được phép + xoá mẫu định danh + xoá các định danh đã biết của ca bệnh khỏi văn bản tự do; sau lọc còn nghi vấn → huỷ request (422). Log kỹ thuật chỉ chứa hash.
+- **Structured output**: response LLM ép theo JSON Schema, sai định dạng bị từ chối — không bao giờ hiển thị kết quả rác cho bác sĩ.
+- **Audit + versioning**: mỗi lượt AI ghi hash(prompt, rules, input) và gắn `record_id + version` — truy vết được "gợi ý này dựa trên hồ sơ phiên bản nào".
+- **Content-based cache**: key = hash(hồ sơ ẩn danh + phiên bản rules + prompt + model) → hồ sơ không đổi trả ngay, 0 token, dashboard hiện `saved_tokens`.
+- **Provider-agnostic**: đổi model/nhà cung cấp bằng env (`LLM_PROVIDER/MODEL/BASE_URL`) — đã kiểm chứng thật khi chuyển DeepSeek → OpenAI giữa dự án.
 
 ```text
-frontend/                 # React 18 + TypeScript + Vite, SCSS modules, Zustand
+frontend/                  # React 18 + TypeScript + Vite, SCSS modules, Zustand
 backend/
-  api/                    # FastAPI: patients, clinical_records, lab, AI router, jobs, telemetry
-    app/routers/          # ai.py, patients.py, clinical_records.py, lab_analysis.py, lab_reports.py
-  ai/                     # clinical_checker: pipeline kiểm tra + sinh biên bản (stdlib-only)
-    clinical_checker/     # privacy (PII), provider (LLM), pipeline, config, cli
-rules/                    # Bộ tiêu chí chuyên môn (JSON): rules_kham_thai, rules_tu_van
-data/                     # 6 ca khám thai mô phỏng (sim_kham1..6) — không có dữ liệu thật
-scripts/                  # export_ai_evidence, load_test_ai_jobs
-docs/                     # Tài liệu kiến trúc, pipeline AI, versioning/cache, CI/CD
+  api/                     # FastAPI: patients, clinical_records (versioned), appointments,
+    app/routers/           #   lab_analysis, lab_reports, ai (check/jobs/generate-counseling)
+    app/ai_jobs.py         # bounded queue + workers (đa người dùng)
+    app/ai_cache.py        # cache kết quả AI theo nội dung
+    app/scheduling.py      # thuật toán cân bằng tải lịch tái khám (pure logic, có test)
+  ai/clinical_checker/     # pipeline AI thuần stdlib: privacy (PII), provider (LLM), pipeline, cli
+rules/                     # Bộ tiêu chí chuyên môn (JSON): khám thai R01–R07, biên bản tư vấn R08
+data/                      # 6 ca khám thai mô phỏng — không có dữ liệu thật
+scripts/                   # export_ai_evidence.py, load_test_ai_jobs.py
+docs/                      # 8 tài liệu kỹ thuật + kinh doanh (bảng dưới)
 ```
 
-## Bắt đầu nhanh
+## Chạy local
 
-### Yêu cầu
-- Node.js ≥ 20, Python ≥ 3.12
-- (Tuỳ chọn) MongoDB Atlas cho lưu trữ + cache; không có vẫn chạy được các luồng demo
-
-### Cài đặt
+Yêu cầu: Node.js ≥ 20, Python ≥ 3.12. (MongoDB tuỳ chọn — không có vẫn chạy demo, lịch hẹn dùng bộ nhớ tiến trình.)
 
 ```bash
-npm install                                # frontend workspaces
+npm install
 python3 -m venv backend/api/.venv
 backend/api/.venv/bin/pip install -r backend/api/requirements.txt
+
+cp .env.example .env                        # điền LLM_API_KEY để bật các luồng AI
+cp backend/api/.env.example backend/api/.env # điền OPENAI_API_KEY cho phân tích xét nghiệm
+
+npm run dev:backend    # FastAPI http://localhost:4000 (health: /health)
+npm run dev:frontend   # Vite http://localhost:5173
 ```
 
-### Cấu hình môi trường
-
-| File | Dùng cho | Mẫu |
-|---|---|---|
-| `.env` (gốc) | Pipeline AI (`clinical_checker`): `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `LLM_BASE_URL`, `PII_FAIL_CLOSED`, `LLM_BATCH_SIZE`… | `.env.example` |
-| `backend/api/.env` | API server: `MONGODB_URI`, `OPENAI_API_KEY` (lab analysis), Supabase keys, `AI_JOB_WORKERS`… | `backend/api/.env.example` |
-| `frontend/.env.local` | `VITE_API_BASE_URL` (mặc định dùng Vite proxy → `localhost:4000`) | `frontend/.env.example` |
-
-> Khoá API chỉ nằm phía server, không bao giờ khai báo qua biến `VITE_*`.
-
-### Chạy development
-
-```bash
-npm run dev:backend    # FastAPI tại http://localhost:4000 (health: /health)
-npm run dev:frontend   # Vite tại http://localhost:5173
-```
-
-Windows: chạy `start.bat`. Đăng nhập demo (không cần hạ tầng cloud):
-
-| Tài khoản | Mật khẩu | Vai trò |
-|---|---|---|
-| `admin@thaprua.vn` | `Admin@123` | Quản trị → Trung tâm quản trị |
-| `myhanh@thaprua.vn` / `thihuong@thaprua.vn` | `Bacsi@123` | Bác sĩ → Hồ sơ bệnh án |
-
-Demo nhanh: đăng nhập bác sĩ → chọn ca `SIM-005` (đái tháo đường thai kỳ) → "Tạo biên bản tư vấn" → "In / Xuất PDF" → "Kiểm tra hồ sơ (AI)".
+Windows: chạy `start.bat`.
 
 ## Kiểm thử
 
 ```bash
-cd backend/api && .venv/bin/python -m pytest        # API tests (jobs, cache, versions…)
-npm run test:ai                                     # unit tests pipeline AI
-npm run check:ai:dry                                # CLI: redact + quét PII, không gọi LLM
-cd frontend && npx tsc --noEmit && npm run build    # typecheck + build frontend
-python scripts/load_test_ai_jobs.py                 # load test hàng đợi AI
+cd backend/api && .venv/bin/python -m pytest     # 38 API tests: jobs, cache, versions, appointments, policy
+npm run test:ai                                  # 25 unit tests pipeline AI (privacy, parser, provider)
+npm run check:ai:dry                             # CLI: redact + quét PII, KHÔNG gọi LLM (an toàn để thử)
+cd frontend && npx tsc --noEmit && npm run build # typecheck + build
+python scripts/load_test_ai_jobs.py              # load test hàng đợi AI
 ```
 
-## Triển khai
+CI (`Backend CI`) chạy toàn bộ test trên mỗi push/PR vào `main`.
 
-- **Backend**: Render (`render.yaml`) — build từ `backend/api/requirements.txt`, health check `/health`, auto-deploy khi checks pass.
-- **Frontend**: Railway — base URL API cấu hình qua `VITE_API_BASE_URL` (`frontend/src/api/config.ts`).
-- Quy trình CI/CD và môi trường staging: xem [docs/github-render-cicd.md](docs/github-render-cicd.md).
+## Kinh doanh & Pilot (tóm tắt)
+
+- Chi phí AI **thực đo**: ~15.000–25.000 token/lượt khám trọn bộ ≈ **400–800đ (<0,5% doanh thu lượt khám sản tư nhân)** — theo dõi từng lượt trên dashboard quản trị.
+- Mô hình SaaS 3 gói (theo lượt / thuê bao phòng khám / theo ghế bác sĩ), hoà vốn từ 1–2 phòng khám thuê bao.
+- Kế hoạch pilot 4 tuần với KPI đo được (biên bản tư vấn 15 phút → 3 phút; +30% tiêu chí đạt): **[docs/pilot-plan.md](docs/pilot-plan.md)**.
 
 ## Tài liệu
 
@@ -111,13 +162,15 @@ python scripts/load_test_ai_jobs.py                 # load test hàng đợi AI
 |---|---|
 | [docs/architecture.md](docs/architecture.md) | Kiến trúc tổng thể, ranh giới API/AI, nguyên tắc human-in-the-loop |
 | [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md) | Pipeline kiểm tra tuân thủ: privacy, prompt, batching, telemetry |
-| [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md) | Hướng dẫn chạy checker qua CLI/API |
+| [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md) | Chạy checker qua CLI/API |
 | [docs/ai-async-jobs-rate-limits.md](docs/ai-async-jobs-rate-limits.md) | Hàng đợi AI jobs, rate limit, chịu tải đồng thời |
 | [docs/document-versioning-ai-cache.md](docs/document-versioning-ai-cache.md) | Phiên bản hoá hồ sơ và cache kết quả AI |
-| [docs/pilot-plan.md](docs/pilot-plan.md) | Kế hoạch pilot 4 tuần, unit economics thực đo và mô hình giá SaaS |
+| [docs/pilot-plan.md](docs/pilot-plan.md) | Pilot 4 tuần, unit economics thực đo, mô hình giá SaaS |
+| [docs/github-render-cicd.md](docs/github-render-cicd.md) | CI/CD với GitHub Actions + Render |
 
-## Bảo mật & dữ liệu
+## An toàn & dữ liệu
 
-- Toàn bộ dữ liệu demo là **mô phỏng** (`data/sim_kham*.json`) — repo không chứa dữ liệu bệnh nhân thật.
-- Thông tin định danh không rời khỏi hệ thống: xem `backend/ai/clinical_checker/privacy.py` (allowlist + scrub + fail-closed).
-- File `.env*` nằm trong `.gitignore` — không commit khoá API hay chuỗi kết nối.
+- Toàn bộ dữ liệu demo là mô phỏng (`data/sim_kham*.json`) — không có dữ liệu bệnh nhân thật trong repo.
+- Thông tin định danh không rời hệ thống: xem `backend/ai/clinical_checker/privacy.py` (allowlist + scrub + fail-closed) và test tương ứng trong `backend/ai/tests/test_privacy.py`.
+- `.env*` nằm trong `.gitignore` — không commit khoá API.
+- Mọi kết quả AI kèm khuyến cáo: *"Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế."*
