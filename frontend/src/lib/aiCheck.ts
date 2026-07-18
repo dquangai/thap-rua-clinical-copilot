@@ -58,10 +58,10 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
   }
 }
 
-export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
+async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`${API_BASE_URL}/ai/check-record`, {
+    response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ record }),
@@ -75,4 +75,13 @@ export async function checkClinicalRecord(record: ReturnType<typeof buildChecker
     throw new Error(detail)
   }
   return response.json()
+}
+
+export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
+  return postAi<AiCheckResponse>('/ai/check-record', record)
+}
+
+export async function generateCounseling(record: ReturnType<typeof buildCheckerRecord>): Promise<string> {
+  const body = await postAi<{ tu_van: string }>('/ai/generate-counseling', record)
+  return body.tu_van
 }
