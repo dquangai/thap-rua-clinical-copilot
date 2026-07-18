@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     frontend_origin: str = "http://localhost:5173"
-    frontend_origins: str = "https://thap-rua-clinical-copilot-1.onrender.com"
+    frontend_origins: str = ""
     mongodb_uri: str = ""
     mongodb_database: str = "thap_rua_clinical"
     supabase_url: str = ""
@@ -24,17 +24,17 @@ class Settings(BaseSettings):
         return bool(self.mongodb_uri)
 
     @property
-    def allowed_frontend_origins(self) -> list[str]:
-        origins = [self.frontend_origin, *self.frontend_origins.split(",")]
-        return list(dict.fromkeys(origin.strip().rstrip("/") for origin in origins if origin.strip()))
-
-    @property
     def supabase_configured(self) -> bool:
         return bool(self.supabase_url and self.supabase_publishable_key and self.supabase_secret_key)
 
     @property
     def openai_configured(self) -> bool:
         return bool(self.openai_api_key and self.openai_model)
+
+    @property
+    def cors_origins(self) -> list[str]:
+        origins = [self.frontend_origin, *self.frontend_origins.split(",")]
+        return list(dict.fromkeys(origin.strip().rstrip("/") for origin in origins if origin.strip()))
 
 
 @lru_cache

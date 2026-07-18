@@ -65,10 +65,16 @@ def call_llm(settings: Settings, system: str, user: str,
         response_format = ({"type": "json_schema", "json_schema": {
             "name": "clinical_compliance", "strict": True, "schema": response_schema,
         }} if response_schema and settings.use_json_schema else {"type": "json_object"})
-        payload = {"model": settings.model, "max_tokens": settings.max_output_tokens,
-                   "temperature": 0,
+        payload = {"model": settings.model,
                    "response_format": response_format,
                    "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
+        # OpenAI chinh thuc (gpt-5.x) bat buoc max_completion_tokens va chi cho temperature mac dinh;
+        # cac endpoint OpenAI-compatible khac (deepseek...) van dung max_tokens + temperature 0.
+        if "openai.com" in settings.base_url:
+            payload["max_completion_tokens"] = settings.max_output_tokens
+        else:
+            payload["max_tokens"] = settings.max_output_tokens
+            payload["temperature"] = 0
     else:
         raise ValueError(f"Provider khong ho tro: {settings.provider}")
     headers["Content-Type"] = "application/json"

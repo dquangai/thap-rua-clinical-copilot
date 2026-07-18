@@ -1,8 +1,6 @@
 import type { PatientRecord } from '../types/clinical'
 import type { AiCheckResponse } from '../types/aiCheck'
-
-// VITE_API_BASE_URL đã bao gồm /api/v1; mặc định đi qua Vite proxy.
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '/api/v1').replace(/\/$/, '')
+import { API_BASE_URL } from '../api/config'
 
 // Mock data dùng 0 cho chỉ số chưa đo; checker cần null để phân biệt thiếu dữ liệu.
 const measured = (value: number | null): number | null => (value ? value : null)
@@ -76,16 +74,16 @@ export function buildCheckerRecord(patient: PatientRecord, notes: CheckerNotes) 
   }
 }
 
-async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>): Promise<T> {
+async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRecord>, options: Record<string, unknown> = {}): Promise<T> {
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ record }),
+      body: JSON.stringify({ record, ...options }),
     })
   } catch {
-    throw new Error('Không kết nối được backend. Hãy chạy: npm run dev:backend')
+    throw new Error('Không kết nối được API backend. Kiểm tra kết nối mạng hoặc cấu hình CORS.')
   }
   if (!response.ok) {
     const body = await response.json().catch(() => null)
@@ -95,8 +93,16 @@ async function postAi<T>(path: string, record: ReturnType<typeof buildCheckerRec
   return response.json()
 }
 
-export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>): Promise<AiCheckResponse> {
-  return postAi<AiCheckResponse>('/ai/check-record', record)
+export interface CheckClinicalRecordOptions {
+  includeCriteria?: string[]
+  excludeCriteria?: string[]
+}
+
+export async function checkClinicalRecord(record: ReturnType<typeof buildCheckerRecord>, options: CheckClinicalRecordOptions = {}): Promise<AiCheckResponse> {
+  return postAi<AiCheckResponse>('/ai/check-record', record, {
+    include_criteria: options.includeCriteria,
+    exclude_criteria: options.excludeCriteria ?? [],
+  })
 }
 
 export async function generateCounseling(record: ReturnType<typeof buildCheckerRecord>): Promise<string> {

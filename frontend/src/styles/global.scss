@@ -27,7 +27,10 @@
 }
 
 * { box-sizing: border-box; }
-html, body, #root { min-height: 100%; }
+html, body, #root {
+  min-height: 100%;
+  font-family: var(--font-ui);
+}
 body {
   margin: 0;
   min-width: 1280px;
@@ -35,7 +38,7 @@ body {
   overflow: hidden;
   background: #f4f4f4;
 }
-button, input, textarea, select { font: inherit; }
+button, input, textarea, select, option { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 input, textarea, select { color: var(--ink); }

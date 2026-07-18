@@ -53,5 +53,33 @@ class ClinicalRecordUpdate(ApiModel):
 class ClinicalRecord(ClinicalRecordCreate):
     id: str
     patient_id: str
+    current_version: int = 1
+    content_hash: str = ""
+    updated_by: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+
+
+class ClinicalRecordVersion(ApiModel):
+    id: str
+    record_id: str
+    patient_id: str
+    version: int
+    snapshot: dict[str, Any]
+    content_hash: str
+    changed_fields: list[str] = Field(default_factory=list)
+    created_by: dict[str, Any]
+    created_at: datetime
+    restored_from_version: int | None = None
+
+
+class ClinicalRecordRestore(ApiModel):
+    expected_version: int = Field(ge=1)
+
+
+class ClinicalRecordDiff(ApiModel):
+    record_id: str
+    from_version: int | None
+    to_version: int
+    changed_fields: list[str] = Field(default_factory=list)
+    changes: dict[str, dict[str, Any]] = Field(default_factory=dict)
