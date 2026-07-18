@@ -586,7 +586,8 @@
 
   b { margin-left: 2px; color: var(--danger); }
 
-  > select {
+  > select,
+  > input {
     height: 32px;
     width: 100%;
     padding: 0 10px;
@@ -634,6 +635,27 @@
     font-size: 8.5px;
     font-style: normal;
     white-space: nowrap;
+  }
+}
+
+.editableInputShell {
+  background: #fff;
+
+  input { cursor: text; }
+}
+
+.bloodPressureShell {
+  input {
+    padding-inline: 4px;
+    text-align: center;
+  }
+
+  i {
+    display: grid;
+    place-items: center;
+    color: #71848a;
+    font-size: 11px;
+    font-style: normal;
   }
 }
 

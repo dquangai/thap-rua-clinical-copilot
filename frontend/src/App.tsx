@@ -486,15 +486,47 @@ type FieldProps = {
   unit?: string
   className?: string
   required?: boolean
+  type?: 'text' | 'number'
+  min?: number
+  max?: number
+  step?: number | 'any'
+  onChange?: (value: string) => void
 }
 
-function Field({ label, value, unit, className = '', required = false }: FieldProps) {
+function Field({ label, value, unit, className = '', required = false, type = 'text', min, max, step, onChange }: FieldProps) {
   return (
     <label className={`${styles.field} ${className}`}>
       <span>{label}{required && <b>*</b>}</span>
-      <div className={styles.inputShell}>
-        <input value={value ?? ''} readOnly aria-label={label} />
+      <div className={`${styles.inputShell} ${onChange ? styles.editableInputShell : ''}`}>
+        <input
+          type={type}
+          min={min}
+          max={max}
+          step={step}
+          value={value ?? ''}
+          readOnly={!onChange}
+          onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+          aria-label={label}
+        />
         {unit && <em>{unit}</em>}
+      </div>
+    </label>
+  )
+}
+
+function BloodPressureField({ systolic, diastolic, onChange }: {
+  systolic: number | null
+  diastolic: number | null
+  onChange: (field: 'systolicBloodPressure' | 'diastolicBloodPressure', value: string) => void
+}) {
+  return (
+    <label className={styles.field}>
+      <span>Huyết áp</span>
+      <div className={`${styles.inputShell} ${styles.editableInputShell} ${styles.bloodPressureShell}`}>
+        <input type="number" min={0} max={300} value={systolic ?? ''} onChange={(event) => onChange('systolicBloodPressure', event.target.value)} aria-label="Huyết áp tâm thu" />
+        <i aria-hidden="true">/</i>
+        <input type="number" min={0} max={200} value={diastolic ?? ''} onChange={(event) => onChange('diastolicBloodPressure', event.target.value)} aria-label="Huyết áp tâm trương" />
+        <em>mmHg</em>
       </div>
     </label>
   )
@@ -1058,28 +1090,38 @@ function AppointmentModal({
 
 function ClinicalRecord({ patient }: { patient: PatientRecord }) {
   const notify = useClinicalStore((state) => state.notify)
-  const [vitalEdits, setVitalEdits] = useState({
-    pulse: patient.vitalSigns.pulse,
-    respiratoryRate: patient.vitalSigns.respiratoryRate,
-    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
-    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
-    temperature: patient.vitalSigns.temperature,
-    height: patient.vitalSigns.height,
-    weight: patient.vitalSigns.weight,
-    bmi: patient.vitalSigns.bmi,
-  })
-  useEffect(() => setVitalEdits({
-    pulse: patient.vitalSigns.pulse,
-    respiratoryRate: patient.vitalSigns.respiratoryRate,
-    systolicBloodPressure: patient.vitalSigns.systolicBloodPressure,
-    diastolicBloodPressure: patient.vitalSigns.diastolicBloodPressure,
-    temperature: patient.vitalSigns.temperature,
-    height: patient.vitalSigns.height,
-    weight: patient.vitalSigns.weight,
-    bmi: patient.vitalSigns.bmi,
-  }), [patient.medicalId, patient.vitalSigns.height, patient.vitalSigns.weight, patient.vitalSigns.bmi])
-  const vitalSigns = { ...patient.vitalSigns, ...vitalEdits }
-  const editablePatient = { ...patient, vitalSigns }
+  const [vitalEdits, setVitalEdits] = useState(() => ({ ...patient.vitalSigns }))
+  const [personnelEdits, setPersonnelEdits] = useState(() => ({
+    doctor: patient.doctor,
+    nurseOne: patient.nurseOne,
+    nurseTwo: patient.nurseTwo,
+  }))
+  useEffect(() => {
+    setVitalEdits({ ...patient.vitalSigns })
+    setPersonnelEdits({ doctor: patient.doctor, nurseOne: patient.nurseOne, nurseTwo: patient.nurseTwo })
+  }, [patient])
+  const vitalSigns = { ...vitalEdits }
+  const editablePatient = { ...patient, ...personnelEdits, vitalSigns }
+
+  const updateNumericVital = (field: Exclude<keyof PatientRecord['vitalSigns'], 'breastfeeding'>, rawValue: string) => {
+    setVitalEdits((current) => {
+      const parsed = rawValue === '' ? null : Number(rawValue)
+      const next = { ...current, [field]: parsed !== null && Number.isFinite(parsed) ? parsed : null }
+
+      if (field === 'height' || field === 'weight') {
+        next.bmi = next.height && next.weight ? Number((next.weight / ((next.height / 100) ** 2)).toFixed(1)) : null
+        next.bsa = next.height && next.weight ? Number(Math.sqrt((next.height * next.weight) / 3600).toFixed(2)) : null
+      }
+
+      return next
+    })
+  }
+
+  const resetClinicalEdits = () => {
+    setVitalEdits({ ...patient.vitalSigns })
+    setPersonnelEdits({ doctor: patient.doctor, nurseOne: patient.nurseOne, nurseTwo: patient.nurseTwo })
+    notify('Đã hủy thay đổi')
+  }
   const progressRef = useRef<HTMLTextAreaElement>(null)
   const planRef = useRef<HTMLTextAreaElement>(null)
   const diagnosisSummaryRef = useRef<HTMLTextAreaElement>(null)
@@ -1433,45 +1475,55 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
             <header className={styles.cardHeader}><Activity size={16} /><h3>Dấu hiệu sinh tồn</h3></header>
             <div className={`${styles.cardBody} ${styles.clinicalDetailsBody}`}>
               <div className={styles.vitalsGrid}>
-                <Field label="Mạch" value={vitalSigns.pulse} unit="lần/phút" />
-                <Field label="Nhịp thở" value={vitalSigns.respiratoryRate} unit="lần/phút" />
-                <Field label="Huyết áp" value={vitalSigns.systolicBloodPressure !== null && vitalSigns.diastolicBloodPressure !== null ? `${vitalSigns.systolicBloodPressure} / ${vitalSigns.diastolicBloodPressure}` : ''} unit="mmHg" />
-                <Field label="SpO₂" value={vitalSigns.spo2} unit="%" />
-                <Field label="Đường huyết" value={vitalSigns.bloodGlucose} unit="mg/dL" />
-                <Field label="Nhiệt độ" value={vitalSigns.temperature} unit="°C" />
-                <Field label="Chiều cao" value={vitalSigns.height} unit="cm" />
-                <Field label="Cân nặng" value={vitalSigns.weight} unit="kg" required />
-                <Field label="Vòng eo" value={vitalSigns.waist} unit="cm" />
-                <Field label="BMI" value={vitalSigns.bmi} />
-                <Field label="BSA" value={vitalSigns.bsa} />
-                <Field label="HbA1c" value={vitalSigns.hba1c} unit="%" />
+                <Field label="Mạch" value={vitalSigns.pulse} unit="lần/phút" type="number" min={0} max={300} onChange={(value) => updateNumericVital('pulse', value)} />
+                <Field label="Nhịp thở" value={vitalSigns.respiratoryRate} unit="lần/phút" type="number" min={0} max={100} onChange={(value) => updateNumericVital('respiratoryRate', value)} />
+                <BloodPressureField systolic={vitalSigns.systolicBloodPressure} diastolic={vitalSigns.diastolicBloodPressure} onChange={updateNumericVital} />
+                <Field label="SpO₂" value={vitalSigns.spo2} unit="%" type="number" min={0} max={100} step={0.1} onChange={(value) => updateNumericVital('spo2', value)} />
+                <Field label="Đường huyết" value={vitalSigns.bloodGlucose} unit="mg/dL" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('bloodGlucose', value)} />
+                <Field label="Nhiệt độ" value={vitalSigns.temperature} unit="°C" type="number" min={25} max={50} step={0.1} onChange={(value) => updateNumericVital('temperature', value)} />
+                <Field label="Chiều cao" value={vitalSigns.height} unit="cm" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('height', value)} />
+                <Field label="Cân nặng" value={vitalSigns.weight} unit="kg" required type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('weight', value)} />
+                <Field label="Vòng eo" value={vitalSigns.waist} unit="cm" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('waist', value)} />
+                <Field label="BMI" value={vitalSigns.bmi} type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('bmi', value)} />
+                <Field label="BSA" value={vitalSigns.bsa} type="number" min={0} step={0.01} onChange={(value) => updateNumericVital('bsa', value)} />
+                <Field label="HbA1c" value={vitalSigns.hba1c} unit="%" type="number" min={0} step={0.1} onChange={(value) => updateNumericVital('hba1c', value)} />
               </div>
 
               <div className={styles.treatmentPane}>
                 <div className={styles.treatmentSubheading}><UserRoundCheck size={15} /><span>Thông tin điều trị</span></div>
                 <div className={styles.checkRow}>
                   <label>
-                    <input type="checkbox" checked={vitalSigns.pregnancyWeeks !== null} readOnly />
+                    <input
+                      type="checkbox"
+                      checked={vitalSigns.pregnancyWeeks !== null}
+                      onChange={(event) => setVitalEdits((current) => ({ ...current, pregnancyWeeks: event.target.checked ? (current.pregnancyWeeks ?? 1) : null }))}
+                    />
                     <span>Mang thai/nghi ngờ thai</span>
-                    <select value={vitalSigns.pregnancyWeeks ?? ''} onChange={() => undefined} aria-label="Số tuần thai">
-                      <option value="">Tuần</option><option value="38">38 tuần</option>
+                    <select
+                      value={vitalSigns.pregnancyWeeks ?? ''}
+                      disabled={vitalSigns.pregnancyWeeks === null}
+                      onChange={(event) => updateNumericVital('pregnancyWeeks', event.target.value)}
+                      aria-label="Số tuần thai"
+                    >
+                      <option value="">Tuần</option>
+                      {Array.from({ length: 42 }, (_, index) => index + 1).map((week) => <option key={week} value={week}>{week} tuần</option>)}
                     </select>
                   </label>
-                  <label><input type="checkbox" checked={vitalSigns.breastfeeding} readOnly /><span>Cho con bú</span></label>
+                  <label><input type="checkbox" checked={vitalSigns.breastfeeding} onChange={(event) => setVitalEdits((current) => ({ ...current, breastfeeding: event.target.checked }))} /><span>Cho con bú</span></label>
                 </div>
 
                 <div className={styles.treatmentFields}>
                   <label className={styles.field}>
                     <span>Bác sĩ điều trị<b>*</b></span>
-                    <select value={patient.doctor} onChange={() => undefined}><option>{patient.doctor}</option></select>
+                    <input value={personnelEdits.doctor} onChange={(event) => setPersonnelEdits((current) => ({ ...current, doctor: event.target.value }))} aria-label="Bác sĩ điều trị" />
                   </label>
                   <label className={styles.field}>
                     <span>Điều dưỡng 1</span>
-                    <select value={patient.nurseOne} onChange={() => undefined}><option>{patient.nurseOne}</option></select>
+                    <input value={personnelEdits.nurseOne} onChange={(event) => setPersonnelEdits((current) => ({ ...current, nurseOne: event.target.value }))} aria-label="Điều dưỡng 1" />
                   </label>
                   <label className={styles.field}>
                     <span>Điều dưỡng 2</span>
-                    <select value={patient.nurseTwo} onChange={() => undefined}><option>{patient.nurseTwo}</option></select>
+                    <input value={personnelEdits.nurseTwo === 'Chọn...' ? '' : personnelEdits.nurseTwo} placeholder="Chọn hoặc nhập tên" onChange={(event) => setPersonnelEdits((current) => ({ ...current, nurseTwo: event.target.value }))} aria-label="Điều dưỡng 2" />
                   </label>
                 </div>
               </div>
@@ -1510,7 +1562,7 @@ function ClinicalRecord({ patient }: { patient: PatientRecord }) {
           Kiểm tra hồ sơ (AI)
         </button>
         <button type="button" className={styles.saveButton} onClick={() => notify('Đã lưu hồ sơ khám')}><Save size={16} />Lưu</button>
-        <button type="button" className={styles.cancelButton} onClick={() => notify('Đã hủy thay đổi')}><X size={16} />Hủy</button>
+        <button type="button" className={styles.cancelButton} onClick={resetClinicalEdits}><X size={16} />Hủy</button>
       </footer>
       {aiCheck.open && !aiCheckMinimized && <AiCheckModal
         state={aiCheck}
