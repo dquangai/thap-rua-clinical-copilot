@@ -72,6 +72,10 @@ Tài khoản demo đầy đủ (nếu muốn đăng nhập từng vai):
 4. Chọn ngày → bấm **"Xác nhận hẹn ngày ..."**.
 5. Vào tab **"Lịch hẹn"** ở sidebar → thấy lịch vừa đặt trong lưới ngày (chọn khoảng **7/14/30 ngày**, ngày hôm nay viền đậm, mỗi ngày hiện tải + danh sách bệnh nhân).
 
+![Modal Đặt lịch tái khám: AI đề xuất hẹn sau 28 ngày kèm lý do y khoa cho ca thai 26 tuần, danh sách ngày ứng viên với thanh tải 0/30 · Còn thưa, ngày 15/08 gắn nhãn Đề xuất, nút Xác nhận hẹn ngày](docs/images/appointment-scheduling.png)
+
+*AI phân tích hồ sơ và giải thích căn cứ trong khung xanh (thai 26 tuần không dấu hiệu nguy hiểm → tái khám sau 4 tuần theo hướng xử trí và lịch khám định kỳ); các ngày ứng viên hiển thị thanh tải thực của phòng khám, Chủ nhật tự loại, ngày tốt nhất gắn nhãn "Đề xuất". Dòng cuối modal ghi rõ: hệ thống chỉ đề xuất — bác sĩ quyết định và có thể chọn ngày khác.*
+
 ### 4) Toa thuốc
 1. Vào tab **"Toa thuốc"** ở sidebar (hoặc tab F7 trên header).
 2. Bấm **"Lấy từ hướng xử trí"** → hệ thống tự trích thuốc bác sĩ đã ghi trong hồ sơ (SIM-005 ra đúng 3 thuốc: Sắt, Acid folic, Canxi).
