@@ -20,7 +20,7 @@ npm install
 npm run dev:frontend
 ~~~
 
-Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực. Xem `docs/mongodb-atlas-setup.md`, sau đó chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
+Backend dùng Python/FastAPI với MongoDB Atlas. Các mutation bệnh án có xác thực để ghi nhận danh tính bác sĩ; phân quyền đọc đầy đủ vẫn thuộc phạm vi production hardening. Sau khi cấu hình môi trường, chạy `npm run dev:backend`; health check tại http://localhost:4000/health. Bản demo frontend hiện tại dùng dữ liệu mock, chưa kết nối dữ liệu bệnh nhân thật.
 
 ## Hiện có
 
@@ -43,3 +43,4 @@ Backend dùng Python/FastAPI với MongoDB Atlas, không có luồng xác thực
 
 - Hướng dẫn chạy: [docs/how-to-run-ai-compliance-checker.md](docs/how-to-run-ai-compliance-checker.md).
 - Tài liệu kỹ thuật đầy đủ: [docs/ai-clinical-compliance-pipeline.md](docs/ai-clinical-compliance-pipeline.md).
+- Versioning hồ sơ và AI result cache: [docs/document-versioning-ai-cache.md](docs/document-versioning-ai-cache.md).
