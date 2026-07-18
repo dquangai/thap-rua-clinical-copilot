@@ -8,10 +8,11 @@ import {
   HeartPulse,
   LockKeyhole,
   Mail,
+  PlayCircle,
   ShieldCheck,
 } from 'lucide-react'
 import thapRuaMark from '../assets/thap-rua-mark.svg'
-import { DEMO_ACCOUNTS, DEMO_DOCTOR_EMAIL, DEMO_DOCTOR_PASSWORD, useAuthStore } from '../store/useAuthStore'
+import { DEMO_ACCOUNTS, DEMO_DOCTOR_EMAIL, useAuthStore } from '../store/useAuthStore'
 import styles from './LoginPage.module.scss'
 
 type LoginLocationState = {
@@ -39,8 +40,8 @@ export default function LoginPage() {
   const isSubmitting = useAuthStore((state) => state.isSubmitting)
   const error = useAuthStore((state) => state.error)
   const clearError = useAuthStore((state) => state.clearError)
-  const [email, setEmail] = useState(DEMO_DOCTOR_EMAIL)
-  const [password, setPassword] = useState(DEMO_DOCTOR_PASSWORD)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => clearError, [clearError])
@@ -74,8 +75,8 @@ export default function LoginPage() {
   }
 
   const handleDemoMode = () => {
-    enterDemoMode()
-    navigateAfterLogin(true)
+    enterDemoMode(DEMO_DOCTOR_EMAIL)
+    navigateAfterLogin(false)
   }
 
   return (
@@ -158,6 +159,9 @@ export default function LoginPage() {
             <div className={styles.loginActions}>
               <button className={styles.submitButton} type="submit" disabled={isSubmitting || !email || password.length < 8}>
                 {isSubmitting ? <><span className={styles.buttonSpinner} /> Đang đăng nhập...</> : <>Đăng nhập <ArrowRight size={18} /></>}
+              </button>
+              <button className={styles.demoButton} type="button" onClick={handleDemoMode} disabled={isSubmitting}>
+                <PlayCircle size={18} /> Chế độ demo
               </button>
             </div>
           </form>
