@@ -1,9 +1,6 @@
 # Clinical API (Python + MongoDB Atlas)
 
-FastAPI service dùng MongoDB Atlas để lưu bệnh nhân, bệnh án, lịch sử phiên bản và AI artifacts.
-Các thao tác tạo/sửa/khôi phục bệnh án yêu cầu Bearer token để ghi đúng danh tính bác sĩ.
-
-Tài liệu thiết kế và vận hành chi tiết: [`docs/document-versioning-ai-cache.md`](../../docs/document-versioning-ai-cache.md).
+FastAPI service dùng MongoDB Atlas để lưu dữ liệu lâm sàng. Các API collection tổng quát yêu cầu Supabase Bearer token; API bệnh nhân và bệnh án hiện vẫn public.
 
 ## Setup
 
@@ -27,48 +24,30 @@ Từ root chạy `npm run dev:backend`. Health ở `http://localhost:4000/health
 - `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}`
 - `POST /api/v1/patients/{patient_id}/clinical-records`
 - `PATCH /api/v1/patients/{patient_id}/clinical-records/{record_id}`
-- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions`
-- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}`
-- `GET /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}/diff`
-- `POST /api/v1/patients/{patient_id}/clinical-records/{record_id}/versions/{version}/restore`
 
-`POST` tạo đồng thời bản hiện hành và version 1. `PATCH` yêu cầu header
-`If-Match-Version: <current_version>`; nội dung không đổi không tạo version mới. Nếu một người khác đã lưu trước,
-API trả `409 VERSION_CONFLICT`. Restore không ghi đè lịch sử mà tạo version mới từ snapshot được chọn.
+## API đọc MongoDB collections
 
-Chạy `python -m scripts.setup_mongodb` sau khi cập nhật để tạo unique index `(record_id, version)` và index cache.
-Hồ sơ cũ được tự động backfill thành version 1 khi được đọc hoặc cập nhật lần đầu.
+Các endpoint này yêu cầu `Authorization: Bearer <supabase-access-token>` và chỉ cho phép đọc các collection đã khai báo trong backend.
 
-Ví dụ cập nhật:
-
-```http
-PATCH /api/v1/patients/patient-1/clinical-records/record-1
-Authorization: Bearer <access-token>
-If-Match-Version: 3
-Content-Type: application/json
-
-{"diagnosis":{"icd10":"O24.4"}}
+```text
+GET /api/v1/collections
+GET /api/v1/collections/{collection_name}
+GET /api/v1/collections/{collection_name}/{document_id}
 ```
 
-## AI result cache
+Danh sách document hỗ trợ `limit`, `offset`, `sort_by`, `sort_order=asc|desc` và bộ lọc equality gồm cặp `filter_field` + `filter_value`.
 
-`/ai/check-record`, `/ai/jobs` và `/ai/generate-counseling` dùng collection `ai_artifacts`. Cache key gồm hash của
-payload minimum-necessary đã ẩn danh, model, pipeline, prompt và rules. `record_id`/`record_version` có thể gửi kèm
-để lưu provenance nhưng không thay thế việc kiểm tra input hash.
+Ví dụ:
 
-Cache miss:
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:4000/api/v1/collections/encounters?limit=20&sort_by=created_at&sort_order=desc"
 
-```json
-{"meta":{"cache_status":"miss","api_calls":1,"total_tokens":1234}}
+curl -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:4000/api/v1/collections/lab_results?filter_field=encounter_id&filter_value=ENC-001"
 ```
 
-Cache hit:
-
-```json
-{"meta":{"cache_status":"hit","api_calls":0,"total_tokens":0,"saved_tokens":1234}}
-```
-
-Nếu MongoDB/cache tạm lỗi, endpoint chạy fail-open và vẫn gọi AI; lỗi cache không làm hỏng thao tác lâm sàng.
+API không nhận MongoDB operator hoặc tên collection tùy ý từ client.
 
 ## Kiểm thử
 
