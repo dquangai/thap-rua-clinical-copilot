@@ -1,12 +1,10 @@
-import type { PatientRecord, PatientStatus } from '../types/clinical'
-import raw1 from '../../../data/sim_kham1.json'
-import raw2 from '../../../data/sim_kham2.json'
-import raw3 from '../../../data/sim_kham3.json'
-import raw4 from '../../../data/sim_kham4.json'
-import raw5 from '../../../data/sim_kham5.json'
-import raw6 from '../../../data/sim_kham6.json'
+import type { PatientRecord, VitalSigns } from '../types/clinical'
 
-interface SimRecord {
+// Hồ sơ demo không còn bundle JSON vào client; dữ liệu được backend phục vụ
+// từ MongoDB qua GET /api/v1/sim-records (xem api/simRecordsApi.ts). File này
+// chỉ giữ phần ánh xạ SimRecord -> PatientRecord cho UI.
+
+export interface SimRecord {
   record_id: string
   visit: {
     visit_code: string
@@ -46,10 +44,18 @@ interface SimRecord {
   signed_at: string
 }
 
-const simRecords = [raw1, raw2, raw3, raw4, raw5, raw6] as unknown as SimRecord[]
+// Ghi đè hiển thị cho từng hồ sơ (số thứ tự, trạng thái hàng đợi, BHYT...)
+// được lưu kèm document trong MongoDB.
+export interface PatientUiOverrides extends Partial<Omit<PatientRecord, 'vitalSigns' | 'diagnoses'>> {
+  vitalSigns?: Partial<VitalSigns>
+  diagnoses?: Partial<PatientRecord['diagnoses']>
+}
 
-// Trạng thái hàng đợi minh họa cho từng ca; dữ liệu JSON không có trường này.
-const simStatuses: PatientStatus[] = ['waiting', 'waiting', 'waiting', 'has-results', 'examining', 'completed']
+export interface SimRecordDocument {
+  seq?: number
+  record: SimRecord
+  ui?: PatientUiOverrides
+}
 
 function formatVisitDateTime(iso: string): string {
   const [datePart, timePart = ''] = iso.split('T')
@@ -62,13 +68,13 @@ function parsePregnancyWeeks(description: string): number | null {
   return match ? Number(match[1]) : null
 }
 
-function toPatientRecord(record: SimRecord, index: number): PatientRecord {
+function toPatientRecord(record: SimRecord): PatientRecord {
   const visitYear = Number(record.visit.visit_datetime.slice(0, 4)) || new Date().getFullYear()
   const vitalSigns = record.vital_signs
   const gender = record.patient.gender === 'Nam' ? 'Nam' : record.patient.gender === 'Nữ' ? 'Nữ' : 'Khác'
   return {
     medicalId: record.record_id,
-    queueNumber: String(53100 + index + 1),
+    queueNumber: '',
     fullName: record.patient.full_name,
     birthYear: visitYear - record.patient.age,
     ageText: `${record.patient.age} tuổi`,
@@ -82,7 +88,7 @@ function toPatientRecord(record: SimRecord, index: number): PatientRecord {
     phone: record.patient.phone,
     address: record.patient.address,
     previousVisitDate: '',
-    status: simStatuses[index] ?? 'waiting',
+    status: 'waiting',
     visitDateTime: formatVisitDateTime(record.visit.visit_datetime),
     reason: record.visit.reason,
     department: record.visit.department,
@@ -121,4 +127,13 @@ function toPatientRecord(record: SimRecord, index: number): PatientRecord {
   }
 }
 
-export const simPatients: PatientRecord[] = simRecords.map(toPatientRecord)
+export function mapSimDocument(document: SimRecordDocument): PatientRecord {
+  const base = toPatientRecord(document.record)
+  const { vitalSigns, diagnoses, ...rest } = document.ui ?? {}
+  return {
+    ...base,
+    ...rest,
+    vitalSigns: { ...base.vitalSigns, ...vitalSigns },
+    diagnoses: { ...base.diagnoses, ...diagnoses },
+  }
+}

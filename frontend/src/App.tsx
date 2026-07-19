@@ -51,7 +51,7 @@ import {
   Users,
   X,
 } from 'lucide-react'
-import { mockPatients, statusSummary } from './data/mockPatients'
+import { buildStatusSummary, usePatientsStore } from './store/usePatientsStore'
 import { medications, type Medication } from './data/medications'
 import { buildCheckerRecord, checkClinicalRecord, generateCounseling } from './lib/aiCheck'
 import LoginPage, { AuthLoadingScreen } from './pages/LoginPage'
@@ -391,9 +391,11 @@ function PatientQueue() {
   const notify = useClinicalStore((state) => state.notify)
   const patientPanelCollapsed = useClinicalStore((state) => state.patientPanelCollapsed)
   const togglePatientPanel = useClinicalStore((state) => state.togglePatientPanel)
-  const selectedPatient = mockPatients.find((patient) => patient.medicalId === selectedMedicalId) ?? mockPatients[0]
+  const patients = usePatientsStore((state) => state.patients)
+  const statusSummary = buildStatusSummary(patients)
+  const selectedPatient = patients.find((patient) => patient.medicalId === selectedMedicalId) ?? patients[0]
   const normalizedSearch = searchTerm.trim().toLocaleLowerCase('vi')
-  const filteredPatients = mockPatients.filter((patient) => {
+  const filteredPatients = patients.filter((patient) => {
     const searchable = `${patient.medicalId} ${patient.fullName} ${patient.queueNumber}`.toLocaleLowerCase('vi')
     return (!normalizedSearch || searchable.includes(normalizedSearch)) && (!statusFilter || patient.status === statusFilter)
   })
@@ -438,8 +440,8 @@ function PatientQueue() {
 
       <div className={styles.selectedPatient}>
         <small>Bệnh nhân:</small>
-        <h2>{selectedPatient.fullName}</h2>
-        <p>Mã BN: <strong>{selectedPatient.medicalId}</strong></p>
+        <h2>{selectedPatient?.fullName ?? 'Đang tải...'}</h2>
+        <p>Mã BN: <strong>{selectedPatient?.medicalId ?? '—'}</strong></p>
       </div>
 
       <div className={styles.queueActions}>
@@ -1995,17 +1997,13 @@ function PrescriptionWorkspace() {
   const toastMessage = useClinicalStore((state) => state.toastMessage)
   const clearToast = useClinicalStore((state) => state.clearToast)
   const notify = useClinicalStore((state) => state.notify)
-  const patient = mockPatients.find((item) => item.medicalId === selectedMedicalId) ?? mockPatients[0]
+  const patients = usePatientsStore((state) => state.patients)
+  const patient = patients.find((item) => item.medicalId === selectedMedicalId) ?? patients[0]
 
   const [rowsByPatient, setRowsByPatient] = useState<Record<string, PrescriptionRow[]>>({})
   const [adviceByPatient, setAdviceByPatient] = useState<Record<string, string>>({})
   const [search, setSearch] = useState('')
   const [printOpen, setPrintOpen] = useState(false)
-
-  const rows = rowsByPatient[patient.medicalId] ?? []
-  const advice = adviceByPatient[patient.medicalId] ?? ''
-  const setRows = (next: PrescriptionRow[]) =>
-    setRowsByPatient((current) => ({ ...current, [patient.medicalId]: next }))
 
   useEffect(() => {
     if (!toastMessage) return
@@ -2016,7 +2014,14 @@ function PrescriptionWorkspace() {
   useEffect(() => {
     setSearch('')
     setPrintOpen(false)
-  }, [patient.medicalId])
+  }, [patient?.medicalId])
+
+  if (!patient) return <PatientDataScreen />
+
+  const rows = rowsByPatient[patient.medicalId] ?? []
+  const advice = adviceByPatient[patient.medicalId] ?? ''
+  const setRows = (next: PrescriptionRow[]) =>
+    setRowsByPatient((current) => ({ ...current, [patient.medicalId]: next }))
 
   const addMedication = (medication: Medication) => {
     if (rows.some((row) => row.id === medication.id)) {
@@ -2311,19 +2316,40 @@ function AppointmentsWorkspace() {
   )
 }
 
+function PatientDataScreen() {
+  const loading = usePatientsStore((state) => state.loading)
+  const error = usePatientsStore((state) => state.error)
+  const load = usePatientsStore((state) => state.load)
+  return (
+    <div className={styles.patientDataScreen}>
+      {error && !loading ? (
+        <>
+          <p>{error}</p>
+          <button type="button" onClick={() => void load()}>Thử lại</button>
+        </>
+      ) : (
+        <p>Đang tải danh sách bệnh nhân…</p>
+      )}
+    </div>
+  )
+}
+
 function HisWorkspace() {
   const collapsed = useClinicalStore((state) => state.sidebarCollapsed)
   const patientPanelCollapsed = useClinicalStore((state) => state.patientPanelCollapsed)
   const selectedMedicalId = useClinicalStore((state) => state.selectedMedicalId)
   const toastMessage = useClinicalStore((state) => state.toastMessage)
   const clearToast = useClinicalStore((state) => state.clearToast)
-  const patient = mockPatients.find((item) => item.medicalId === selectedMedicalId) ?? mockPatients[0]
+  const patients = usePatientsStore((state) => state.patients)
+  const patient = patients.find((item) => item.medicalId === selectedMedicalId) ?? patients[0]
 
   useEffect(() => {
     if (!toastMessage) return
     const timeoutId = window.setTimeout(clearToast, 2200)
     return () => window.clearTimeout(timeoutId)
   }, [toastMessage, clearToast])
+
+  if (!patient) return <PatientDataScreen />
 
   return (
     <div className={styles.appShell}>
@@ -2345,10 +2371,15 @@ export default function App() {
   const expiresAt = useAuthStore((state) => state.expiresAt)
   const initialize = useAuthStore((state) => state.initialize)
   const refreshSession = useAuthStore((state) => state.refreshSession)
+  const loadPatients = usePatientsStore((state) => state.load)
 
   useEffect(() => {
     void initialize()
   }, [initialize])
+
+  useEffect(() => {
+    if (status === 'authenticated') void loadPatients()
+  }, [status, loadPatients])
 
   useEffect(() => {
     if (status !== 'authenticated' || !expiresAt) return

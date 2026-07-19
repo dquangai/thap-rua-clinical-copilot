@@ -93,6 +93,19 @@ class FakeCollection:
                 return deepcopy(row)
         return None
 
+    def count_documents(self, selector: dict[str, Any]) -> int:
+        return sum(1 for row in self.rows if _matches(row, selector))
+
+    def insert_many(self, documents: Iterable[dict[str, Any]]):
+        inserted = [self.insert_one(document).inserted_id for document in documents]
+        return SimpleNamespace(inserted_ids=inserted)
+
+    def delete_many(self, selector: dict[str, Any]):
+        kept = [row for row in self.rows if not _matches(row, selector)]
+        removed = len(self.rows) - len(kept)
+        self.rows = kept
+        return SimpleNamespace(deleted_count=removed)
+
 
 class FakeDatabase:
     def __init__(self, *, patients: Iterable[dict[str, Any]] = ()):
@@ -101,3 +114,13 @@ class FakeDatabase:
         self.clinical_record_versions = FakeCollection()
         self.ai_artifacts = FakeCollection()
         self.api_usage_events = FakeCollection()
+
+
+class FakeKeyedDatabase:
+    """Database truy cập kiểu db[name] cho các router dùng tên collection động."""
+
+    def __init__(self, **collections: Iterable[dict[str, Any]]):
+        self.collections = {name: FakeCollection(rows) for name, rows in collections.items()}
+
+    def __getitem__(self, name: str) -> FakeCollection:
+        return self.collections.setdefault(name, FakeCollection())

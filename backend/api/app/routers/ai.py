@@ -303,13 +303,47 @@ def get_job(job_id: str, request: Request) -> dict[str, Any]:
     return job.public()
 
 
-def _load_rules_or_503() -> dict[str, Any]:
-    if not RULES_PATH.exists():
-        raise HTTPException(status_code=503, detail=f"Không tìm thấy thư mục rules: {RULES_PATH}")
+def _rules_from_database() -> dict[str, Any] | None:
+    """Ghép rules từ Mongo theo đúng cấu trúc load_rules() đọc disk.
+
+    Giữ nguyên thứ tự (file sort theo tên, rule theo seq) và trường sources
+    để content_hash(rules) — tức rules_version của cache — không đổi khi
+    chuyển nguồn từ disk sang DB.
+    """
     try:
-        return load_rules(RULES_PATH)
-    except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        db = get_database()
+        sources: list[str] = []
+        merged: list[dict[str, Any]] = []
+        for collection_name in ("rules_kham_thai", "rules_tu_van"):
+            documents = list(db[collection_name].find({}, {"_id": 0}).sort("seq", 1))
+            rules = [document["rule"] for document in documents if "rule" in document]
+            if not rules:
+                continue
+            source = documents[0].get("source", collection_name)
+            if source not in sources:
+                sources.append(source)
+            merged.extend(rules)
+        if not merged:
+            return None
+        return {"sources": sources, "rules": merged}
+    except Exception:
+        return None
+
+
+def _load_rules_or_503() -> dict[str, Any]:
+    rules = _rules_from_database()
+    if rules is not None:
+        return rules
+    # Bootstrap fallback: DB chưa cấu hình/chưa seed thì đọc file rules/ nếu còn.
+    if RULES_PATH.exists():
+        try:
+            return load_rules(RULES_PATH)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+    raise HTTPException(
+        status_code=503,
+        detail="Rules phác đồ chưa được seed vào MongoDB (chạy scripts/seed_clinical_data.py) và không có thư mục rules/ dự phòng",
+    )
 
 
 @router.post("/check-record")

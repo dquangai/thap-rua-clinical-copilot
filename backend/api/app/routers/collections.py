@@ -31,6 +31,7 @@ ALLOWED_COLLECTIONS = (
     "practitioners",
     "rules_kham_thai",
     "rules_tu_van",
+    "sim_clinical_records",
     "vital_signs",
 )
 ALLOWED_COLLECTION_SET = frozenset(ALLOWED_COLLECTIONS)

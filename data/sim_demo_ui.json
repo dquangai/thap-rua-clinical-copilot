@@ -1,0 +1,185 @@
+[
+  {
+    "seq": 0,
+    "record": {
+      "record_id": "2001175594",
+      "visit": {
+        "visit_code": "",
+        "visit_datetime": "2026-07-17T03:28:00",
+        "reason": "KHÁM THAI",
+        "department": "Khoa Sản",
+        "clinic": "Phòng khám chuyên khoa Phụ Sản"
+      },
+      "patient": {
+        "full_name": "NGUYỄN THỊ HỒNG NGỌC",
+        "age": 33,
+        "gender": "Nữ",
+        "phone": "0349779842",
+        "address": "Ấp Long Thịnh, Xã Long Thuận, Tỉnh Tây Ninh"
+      },
+      "vital_signs": {
+        "mach_lan_phut": 80,
+        "nhiet_do_c": 37,
+        "huyet_ap_tam_thu_mmhg": 120,
+        "huyet_ap_tam_truong_mmhg": 80,
+        "nhip_tho_lan_phut": 20,
+        "chieu_cao_cm": 0,
+        "can_nang_kg": 67,
+        "bmi": 0,
+        "duong_huyet_mg_dl": 0
+      },
+      "clinical_note": {
+        "dien_bien": "PARA: 1001/ ST 2014 2600 g\nDự sanh ngày: 25/07/2026 theo siêu âm thai # 12 tuần (bn khai)\nTiền căn: Nội - Ngoại khoa: Bình thường\nSản khoa: Bình thường\n\nQUÁ TRÌNH KHÁM THAI:\nTiêm ngừa: vắc 1 mũi\nXét nghiệm:\nSàng lọc bé: NCT",
+        "huong_xu_tri": "Tái khám lại sau 4 ngày\n- Siêu âm thai\n- NST\nHoặc tái khám lại khi có dấu hiệu bất thường như: Sốt, đau bụng, ra nước ối, ra huyết âm đạo, thai máy yếu."
+      },
+      "diagnosis": {
+        "icd10": "Z35",
+        "mo_ta": "Theo dõi thai phụ có nguy cơ cao"
+      },
+      "doctor": "BS. Nguyễn Thị Hương",
+      "signed_at": "2026-07-17T03:28:00"
+    },
+    "ui": {
+      "queueNumber": "53005",
+      "status": "examining",
+      "insuranceNumber": "DN4807215005924",
+      "patientType": "DN thành lập, hoạt động theo Luật Doanh nghiệp",
+      "discountPercent": 80,
+      "insuranceDaysRemaining": 162,
+      "medicineDaysRemaining": 6,
+      "previousVisitDate": "23/06/2026",
+      "vitalSigns": {
+        "spo2": 0,
+        "waist": 0,
+        "bsa": 0,
+        "hba1c": 0,
+        "pregnancyWeeks": 38
+      },
+      "diagnoses": {
+        "summary": "Z35 - Thai 38 tuần 6 ngày/ ĐTĐ thai kỳ"
+      }
+    }
+  },
+  {
+    "seq": 1,
+    "record": {
+      "record_id": "2001180193",
+      "visit": {
+        "visit_code": "",
+        "visit_datetime": "2026-07-17T03:28:00",
+        "reason": "KHÁM THAI",
+        "department": "Khoa Sản",
+        "clinic": "Phòng khám chuyên khoa Phụ Sản"
+      },
+      "patient": {
+        "full_name": "TRẦN THỊ BÍCH CHÂU",
+        "age": 30,
+        "gender": "Nữ",
+        "phone": "0908123456",
+        "address": "Ấp Long Thịnh, Xã Long Thuận, Tỉnh Tây Ninh"
+      },
+      "vital_signs": {
+        "mach_lan_phut": 80,
+        "nhiet_do_c": 37,
+        "huyet_ap_tam_thu_mmhg": 120,
+        "huyet_ap_tam_truong_mmhg": 80,
+        "nhip_tho_lan_phut": 20,
+        "chieu_cao_cm": 0,
+        "can_nang_kg": 67,
+        "bmi": 0,
+        "duong_huyet_mg_dl": 0
+      },
+      "clinical_note": {
+        "dien_bien": "PARA: 1001/ ST 2014 2600 g\nDự sanh ngày: 25/07/2026 theo siêu âm thai # 12 tuần (bn khai)\nTiền căn: Nội - Ngoại khoa: Bình thường\nSản khoa: Bình thường\n\nQUÁ TRÌNH KHÁM THAI:\nTiêm ngừa: vắc 1 mũi\nXét nghiệm:\nSàng lọc bé: NCT",
+        "huong_xu_tri": "Tái khám lại sau 4 ngày\n- Siêu âm thai\n- NST\nHoặc tái khám lại khi có dấu hiệu bất thường như: Sốt, đau bụng, ra nước ối, ra huyết âm đạo, thai máy yếu."
+      },
+      "diagnosis": {
+        "icd10": "Z35",
+        "mo_ta": "Theo dõi thai phụ có nguy cơ cao"
+      },
+      "doctor": "BS. Nguyễn Thị Hương",
+      "signed_at": "2026-07-17T03:28:00"
+    },
+    "ui": {
+      "queueNumber": "53026",
+      "status": "waiting",
+      "insuranceNumber": "DN4807215006018",
+      "patientType": "DN thành lập, hoạt động theo Luật Doanh nghiệp",
+      "discountPercent": 80,
+      "insuranceDaysRemaining": 162,
+      "medicineDaysRemaining": 6,
+      "previousVisitDate": "23/06/2026",
+      "vitalSigns": {
+        "spo2": 0,
+        "waist": 0,
+        "bsa": 0,
+        "hba1c": 0,
+        "pregnancyWeeks": 38
+      },
+      "diagnoses": {
+        "summary": "Z35 - Thai 38 tuần 6 ngày/ ĐTĐ thai kỳ"
+      }
+    }
+  },
+  {
+    "seq": 2,
+    "record": {
+      "record_id": "2001194971",
+      "visit": {
+        "visit_code": "",
+        "visit_datetime": "2026-07-17T03:28:00",
+        "reason": "KHÁM THAI",
+        "department": "Khoa Sản",
+        "clinic": "Phòng khám chuyên khoa Phụ Sản"
+      },
+      "patient": {
+        "full_name": "BÙI THỊ NGÂN HÀ",
+        "age": 21,
+        "gender": "Nữ",
+        "phone": "0913234567",
+        "address": "Ấp Long Thịnh, Xã Long Thuận, Tỉnh Tây Ninh"
+      },
+      "vital_signs": {
+        "mach_lan_phut": 80,
+        "nhiet_do_c": 37,
+        "huyet_ap_tam_thu_mmhg": 120,
+        "huyet_ap_tam_truong_mmhg": 80,
+        "nhip_tho_lan_phut": 20,
+        "chieu_cao_cm": 0,
+        "can_nang_kg": 67,
+        "bmi": 0,
+        "duong_huyet_mg_dl": 0
+      },
+      "clinical_note": {
+        "dien_bien": "PARA: 1001/ ST 2014 2600 g\nDự sanh ngày: 25/07/2026 theo siêu âm thai # 12 tuần (bn khai)\nTiền căn: Nội - Ngoại khoa: Bình thường\nSản khoa: Bình thường\n\nQUÁ TRÌNH KHÁM THAI:\nTiêm ngừa: vắc 1 mũi\nXét nghiệm:\nSàng lọc bé: NCT",
+        "huong_xu_tri": "Tái khám lại sau 4 ngày\n- Siêu âm thai\n- NST\nHoặc tái khám lại khi có dấu hiệu bất thường như: Sốt, đau bụng, ra nước ối, ra huyết âm đạo, thai máy yếu."
+      },
+      "diagnosis": {
+        "icd10": "Z35",
+        "mo_ta": "Theo dõi thai phụ có nguy cơ cao"
+      },
+      "doctor": "BS. Nguyễn Thị Hương",
+      "signed_at": "2026-07-17T03:28:00"
+    },
+    "ui": {
+      "queueNumber": "53041",
+      "status": "has-results",
+      "insuranceNumber": "HS4807215006144",
+      "patientType": "DN thành lập, hoạt động theo Luật Doanh nghiệp",
+      "discountPercent": 80,
+      "insuranceDaysRemaining": 162,
+      "medicineDaysRemaining": 6,
+      "previousVisitDate": "23/06/2026",
+      "vitalSigns": {
+        "spo2": 0,
+        "waist": 0,
+        "bsa": 0,
+        "hba1c": 0,
+        "pregnancyWeeks": 38
+      },
+      "diagnoses": {
+        "summary": "Z35 - Thai 38 tuần 6 ngày/ ĐTĐ thai kỳ"
+      }
+    }
+  }
+]

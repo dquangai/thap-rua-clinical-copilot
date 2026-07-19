@@ -5,12 +5,9 @@ const AUDIT_KEY = 'thap-rua.demo.admin.audit.v1'
 const RECORDS_KEY = 'thap-rua.demo.admin.records.v1'
 const BATCH_RESULTS_KEY = 'thap-rua.demo.admin.batch-results.v1'
 
+// Không hardcode hồ sơ mặc định ở client; danh sách nền được truyền vào từ
+// dữ liệu bệnh nhân đã fetch từ backend (xem AdminDashboard).
 export type DemoManagedRecord = { id: string; patient: string; doctor: string; deleted: boolean; deletionReason?: string }
-const DEFAULT_RECORDS: DemoManagedRecord[] = [
-  { id: '2001175594', patient: 'NGUYỄN THỊ HỒNG NGỌC', doctor: 'BS. Lê Thị Mỹ Hạnh', deleted: false },
-  { id: '2001180193', patient: 'TRẦN THỊ BÍCH CHÂU', doctor: 'BS. Nguyễn Thị Hương', deleted: false },
-  { id: '2001194971', patient: 'BÙI THỊ NGÂN HÀ', doctor: 'BS. Lê Thị Mỹ Hạnh', deleted: false },
-]
 
 function read<T>(key: string, fallback: T): T {
   try { const value = localStorage.getItem(key); return value ? JSON.parse(value) as T : fallback }
@@ -38,9 +35,9 @@ export const getDemoAudit = () => {
     return true
   }).map((item, index) => ({ ...item, id: new Date(item.occurred_at).getTime() * 1000 + index }))
 }
-export const getDemoRecords = () => read<DemoManagedRecord[]>(RECORDS_KEY, DEFAULT_RECORDS)
+export const getDemoRecords = (fallback: DemoManagedRecord[] = []) => read<DemoManagedRecord[]>(RECORDS_KEY, fallback)
 export const getBatchAuditResults = () => read<BatchAuditResult[]>(BATCH_RESULTS_KEY, [])
-export const getDemoRecordStats = () => { const records = getDemoRecords(); return { total: records.length, deleted: records.filter((item) => item.deleted).length } }
+export const getDemoRecordStats = (fallback: DemoManagedRecord[] = []) => { const records = getDemoRecords(fallback); return { total: records.length, deleted: records.filter((item) => item.deleted).length } }
 
 export function recordDemoUsage(event: Omit<UsageEvent, 'id' | 'occurred_at'>) {
   write(USAGE_KEY, [{ ...event, id: Date.now(), occurred_at: new Date().toISOString() }, ...getDemoUsage()].slice(0, 200))

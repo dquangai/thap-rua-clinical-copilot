@@ -110,11 +110,11 @@ flowchart LR
   API --> VERS[(clinical_record_versions\ndocument versioning)]
   API --> PIPE[clinical_checker\nbackend/ai — stdlib only]
   PIPE -->|"hồ sơ ĐÃ ẨN DANH (PII fail-closed)"| LLM[LLM provider\nOpenAI / DeepSeek / ... qua env]
-  RULES[rules/*.json\nbộ tiêu chí chuyên môn] --> PIPE
+  RULES[(rules_kham_thai + rules_tu_van\ntrong MongoDB)] --> PIPE
 ```
 
 **Các quyết định kiến trúc AI-native đáng chú ý:**
-- **Rules-as-data**: tiêu chí y khoa (R01–R08) là JSON có trường scope theo ngữ cảnh — cập nhật quy định không cần sửa code, không cần re-deploy; phòng khám tự chủ bộ tiêu chí.
+- **Rules-as-data**: tiêu chí y khoa (R01–R08) lưu trong MongoDB (`rules_kham_thai`, `rules_tu_van`) với trường scope theo ngữ cảnh — cập nhật quy định không cần sửa code, không cần re-deploy; phòng khám tự chủ bộ tiêu chí. File `rules/*.json` chỉ là seed bootstrap.
 - **PII fail-closed**: allowlist trường được phép + xoá mẫu định danh + xoá các định danh đã biết của ca bệnh khỏi văn bản tự do; sau lọc còn nghi vấn → huỷ request (422). Log kỹ thuật chỉ chứa hash.
 - **Structured output**: response LLM ép theo JSON Schema, sai định dạng bị từ chối — không bao giờ hiển thị kết quả rác cho bác sĩ.
 - **Audit + versioning**: mỗi lượt AI ghi hash(prompt, rules, input) và gắn `record_id + version` — truy vết được "gợi ý này dựa trên hồ sơ phiên bản nào".
@@ -130,8 +130,8 @@ backend/
     app/ai_cache.py        # cache kết quả AI theo nội dung
     app/scheduling.py      # thuật toán cân bằng tải lịch tái khám (pure logic, có test)
   ai/clinical_checker/     # pipeline AI thuần stdlib: privacy (PII), provider (LLM), pipeline, cli
-rules/                     # Bộ tiêu chí chuyên môn (JSON): khám thai R01–R07, biên bản tư vấn R08
-data/                      # 6 ca khám thai mô phỏng — không có dữ liệu thật
+rules/                     # File seed bộ tiêu chí (R01–R08) — runtime đọc từ MongoDB, seed 1 lần
+data/                      # File seed ca khám mô phỏng — runtime đọc từ MongoDB qua /api/v1/sim-records
 scripts/                   # export_ai_evidence.py, load_test_ai_jobs.py
 docs/                      # 8 tài liệu kỹ thuật + kinh doanh (bảng dưới)
 ```
@@ -148,6 +148,9 @@ backend/api/.venv/bin/pip install -r backend/api/requirements.txt
 cp .env.example .env                        # điền LLM_API_KEY để bật các luồng AI
 cp backend/api/.env.example backend/api/.env # điền OPENAI_API_KEY cho phân tích xét nghiệm
 
+# Khi có MONGODB_URI: seed rules + hồ sơ demo vào DB (API cũng tự seed lúc khởi động nếu collection trống)
+cd backend/api && .venv/bin/python -m scripts.seed_clinical_data && cd ../..
+
 npm run dev:backend    # FastAPI http://localhost:4000 (health: /health)
 npm run dev:frontend   # Vite http://localhost:5173
 ```
@@ -157,7 +160,7 @@ Windows: chạy `start.bat`.
 ## Kiểm thử
 
 ```bash
-cd backend/api && .venv/bin/python -m pytest     # 38 API tests: jobs, cache, versions, appointments, policy
+cd backend/api && .venv/bin/python -m pytest     # 44 API tests: jobs, cache, versions, appointments, policy, seed/sim-records
 npm run test:ai                                  # 25 unit tests pipeline AI (privacy, parser, provider)
 npm run check:ai:dry                             # CLI: redact + quét PII, KHÔNG gọi LLM (an toàn để thử)
 cd frontend && npx tsc --noEmit && npm run build # typecheck + build
@@ -186,7 +189,8 @@ CI (`Backend CI`) chạy toàn bộ test trên mỗi push/PR vào `main`.
 
 ## An toàn & dữ liệu
 
-- Toàn bộ dữ liệu demo là mô phỏng (`data/sim_kham*.json`) — không có dữ liệu bệnh nhân thật trong repo.
+- Toàn bộ dữ liệu demo là mô phỏng — không có dữ liệu bệnh nhân thật trong repo.
+- Hồ sơ bệnh nhân và rules phác đồ được phục vụ từ MongoDB qua API (`/api/v1/sim-records`, `/api/v1/rules/*`), **không còn bundle JSON vào client**; file `data/`, `rules/` chỉ là seed bootstrap, có thể xoá sau khi DB production đã seed.
 - Thông tin định danh không rời hệ thống: xem `backend/ai/clinical_checker/privacy.py` (allowlist + scrub + fail-closed) và test tương ứng trong `backend/ai/tests/test_privacy.py`.
 - `.env*` nằm trong `.gitignore` — không commit khoá API.
 - Mọi kết quả AI kèm khuyến cáo: *"Công cụ hỗ trợ kiểm tra, không thay thế đánh giá của nhân viên y tế."*

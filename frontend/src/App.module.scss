@@ -4433,3 +4433,24 @@
     box-shadow: none;
   }
 }
+
+.patientDataScreen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: #eef2f6;
+  color: #1f2d3d;
+  font-size: 15px;
+
+  button {
+    border: 1px solid #2f6fb4;
+    background: #2f6fb4;
+    color: #fff;
+    border-radius: 6px;
+    padding: 8px 18px;
+    cursor: pointer;
+  }
+}
