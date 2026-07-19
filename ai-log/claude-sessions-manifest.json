@@ -1,0 +1,46 @@
+[
+  {
+    "session_id": "50f9ea13-09b3-420f-b032-3f655e1a03d1",
+    "raw_session_path": "/Users/mac/.claude/projects/-Users-mac-Downloads-thap-rua-clinical-copilot/50f9ea13-09b3-420f-b032-3f655e1a03d1.jsonl",
+    "raw_session_snapshot_bytes": 1847835,
+    "raw_session_snapshot_sha256": "84f331b1cfa557c49c952bc3b94be1bc62a7803d9a760b29e1b7fb1ac6725c8d",
+    "sanitized_export_path": "ai-log/claude-session-50f9ea13.sanitized.jsonl",
+    "sanitized_export_sha256": "31a880a83af17c2b8dace90299ad1d9b912278d345c081a0e86cf0717f55f490",
+    "sanitized_message_count": 87,
+    "exported_at": "2026-07-19T01:56:05.064487+00:00",
+    "export_policy": "Messages only; system/developer instructions, reasoning and raw tool I/O omitted; PII/secrets redacted."
+  },
+  {
+    "session_id": "54ca187a-73bc-4741-ab4c-2c42743721a3",
+    "raw_session_path": "/Users/mac/.claude/projects/-Users-mac-Downloads-thap-rua-clinical-copilot/54ca187a-73bc-4741-ab4c-2c42743721a3.jsonl",
+    "raw_session_snapshot_bytes": 24403565,
+    "raw_session_snapshot_sha256": "b9e9706c0ab91d9edad2e13cb1a4b9410f58311b11fe7422f4ce1e4e20d5d65d",
+    "sanitized_export_path": "ai-log/claude-session-54ca187a.sanitized.jsonl",
+    "sanitized_export_sha256": "ee75c7dc8b32498754d9c80fc6cbc36506db3b9503c470dba5530d133d43b76f",
+    "sanitized_message_count": 274,
+    "exported_at": "2026-07-19T01:56:05.185855+00:00",
+    "export_policy": "Messages only; system/developer instructions, reasoning and raw tool I/O omitted; PII/secrets redacted."
+  },
+  {
+    "session_id": "ae6f170b-a543-4a6e-b0fa-f2128f24d107",
+    "raw_session_path": "/Users/mac/.claude/projects/-Users-mac-Downloads-thap-rua-clinical-copilot/ae6f170b-a543-4a6e-b0fa-f2128f24d107.jsonl",
+    "raw_session_snapshot_bytes": 85947,
+    "raw_session_snapshot_sha256": "59b061e085c17551702a527dabb68c95bad4a6ca720ea029ad13bed2edf32e20",
+    "sanitized_export_path": "ai-log/claude-session-ae6f170b.sanitized.jsonl",
+    "sanitized_export_sha256": "99c97468d0bcac015d55c0b59c4e363f15878145b66000122fc27fb0b9394973",
+    "sanitized_message_count": 2,
+    "exported_at": "2026-07-19T01:56:05.187383+00:00",
+    "export_policy": "Messages only; system/developer instructions, reasoning and raw tool I/O omitted; PII/secrets redacted."
+  },
+  {
+    "session_id": "bcce3a99-555d-41d5-acd9-9f37f1a61a7e",
+    "raw_session_path": "/Users/mac/.claude/projects/-Users-mac-Downloads-thap-rua-clinical-copilot/bcce3a99-555d-41d5-acd9-9f37f1a61a7e.jsonl",
+    "raw_session_snapshot_bytes": 107200,
+    "raw_session_snapshot_sha256": "264de1ac4eb20ea8eb650ee6c21965442ed878150a49c81f9d985de7bfa6c477",
+    "sanitized_export_path": "ai-log/claude-session-bcce3a99.sanitized.jsonl",
+    "sanitized_export_sha256": "a63d295801f56015dc60e05a548cdc47a6eedfa099d32aad35ee13f87db25828",
+    "sanitized_message_count": 6,
+    "exported_at": "2026-07-19T01:56:05.189445+00:00",
+    "export_policy": "Messages only; system/developer instructions, reasoning and raw tool I/O omitted; PII/secrets redacted."
+  }
+]
